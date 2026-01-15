@@ -80,6 +80,7 @@ $defaults['osusume'] = 0;
 $values = $defaults;
 $message = '';
 $error = '';
+$imageRows = [];
 
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 
@@ -131,6 +132,64 @@ try {
             $id = (int)$pdo->lastInsertId();
             $message = '登録しました。';
         }
+
+        if ($id) {
+            $deleteIds = isset($_POST['delete_image']) && is_array($_POST['delete_image']) ? $_POST['delete_image'] : [];
+            if ($deleteIds) {
+                $in = implode(',', array_fill(0, count($deleteIds), '?'));
+                $stmt = $pdo->prepare("SELECT id, file_path FROM property_images WHERE property_type = 'sale' AND property_id = ? AND id IN ($in)");
+                $stmt->execute(array_merge([$id], $deleteIds));
+                foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                    $filePath = __DIR__ . '/../../' . $row['file_path'];
+                    if (is_file($filePath)) {
+                        unlink($filePath);
+                    }
+                }
+                $del = $pdo->prepare("DELETE FROM property_images WHERE property_type = 'sale' AND property_id = ? AND id IN ($in)");
+                $del->execute(array_merge([$id], $deleteIds));
+            }
+
+            if (isset($_POST['image_sort']) && is_array($_POST['image_sort'])) {
+                $sortStmt = $pdo->prepare("UPDATE property_images SET sort = :sort WHERE id = :id AND property_type = 'sale' AND property_id = :property_id");
+                foreach ($_POST['image_sort'] as $imageId => $sortValue) {
+                    $sortStmt->execute([
+                        'sort' => (int)$sortValue,
+                        'id' => (int)$imageId,
+                        'property_id' => $id,
+                    ]);
+                }
+            }
+
+            if (!empty($_FILES['images']) && is_array($_FILES['images']['name'])) {
+                $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+                $uploadDir = __DIR__ . '/../../uploads/sale';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+                $insertImg = $pdo->prepare('INSERT INTO property_images (property_type, property_id, file_path, sort, status, created_at) VALUES (\'sale\', :property_id, :file_path, :sort, 1, NOW())');
+                $fileCount = count($_FILES['images']['name']);
+                for ($i = 0; $i < $fileCount; $i++) {
+                    if ($_FILES['images']['error'][$i] !== UPLOAD_ERR_OK) {
+                        continue;
+                    }
+                    $tmpName = $_FILES['images']['tmp_name'][$i];
+                    $mime = mime_content_type($tmpName);
+                    if (!isset($allowed[$mime])) {
+                        continue;
+                    }
+                    $ext = $allowed[$mime];
+                    $fileName = sprintf('sale_%d_%s_%04d.%s', $id, date('YmdHis'), $i, $ext);
+                    $destPath = $uploadDir . '/' . $fileName;
+                    if (move_uploaded_file($tmpName, $destPath)) {
+                        $insertImg->execute([
+                            'property_id' => $id,
+                            'file_path' => 'uploads/sale/' . $fileName,
+                            'sort' => 0,
+                        ]);
+                    }
+                }
+            }
+        }
     }
 
     if ($id) {
@@ -140,6 +199,10 @@ try {
         if ($row) {
             $values = array_merge($values, $row);
         }
+
+        $imgStmt = $pdo->prepare("SELECT id, file_path, sort FROM property_images WHERE property_type = 'sale' AND property_id = :id ORDER BY sort ASC, id ASC");
+        $imgStmt->execute(['id' => $id]);
+        $imageRows = $imgStmt->fetchAll(PDO::FETCH_ASSOC);
     }
 } catch (Throwable $e) {
     $error = 'エラーが発生しました。' . $e->getMessage();
@@ -153,7 +216,7 @@ try {
   <p><?php echo h($error); ?></p>
 <?php endif; ?>
 
-<form method="post" action="">
+<form method="post" action="" enctype="multipart/form-data">
   <input type="hidden" name="id" value="<?php echo h((string)$id); ?>">
   <div>
     <label>公開状態
@@ -163,7 +226,7 @@ try {
       </select>
     </label>
   </div>
-  <div><label>物件名 <input type="text" name="name" value="<?php echo h((string)$values['name']); ?>"></label></div>
+  <div><label>物件名 <span style="color:#d00;">※</span> <input type="text" name="name" value="<?php echo h((string)$values['name']); ?>" required></label></div>
   <div>
     <label>種別
       <select name="cate">
@@ -179,7 +242,7 @@ try {
   </div>
   <div><label>キャッチコピー <input type="text" name="catchCopy" value="<?php echo h((string)$values['catchCopy']); ?>"></label></div>
   <div><label>所在地 <input type="text" name="location" value="<?php echo h((string)$values['location']); ?>"></label></div>
-  <div><label>価格 <input type="text" name="price" value="<?php echo h((string)$values['price']); ?>"></label></div>
+  <div><label>価格 <span style="color:#d00;">※</span> <input type="text" name="price" value="<?php echo h((string)$values['price']); ?>" required></label></div>
   <div>
     <label>取引態様
       <select name="transaction_type">
@@ -435,5 +498,77 @@ try {
   <div>
     <button type="submit">保存</button>
   </div>
+
+  <?php if ($id): ?>
+  <hr>
+  <div>
+    <label>画像追加 <input type="file" name="images[]" multiple></label>
+  </div>
+  <?php if ($imageRows): ?>
+    <table id="sale-image-table">
+      <thead>
+        <tr>
+          <th>画像</th>
+          <th>並び順</th>
+          <th>削除</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($imageRows as $img): ?>
+          <tr class="draggable-row" draggable="true" data-image-id="<?php echo h((string)$img['id']); ?>">
+            <td><img src="../<?php echo h($img['file_path']); ?>" alt="" style="max-width:120px;"></td>
+            <td><input type="number" name="image_sort[<?php echo h((string)$img['id']); ?>]" value="<?php echo h((string)$img['sort']); ?>"></td>
+            <td><input type="checkbox" name="delete_image[]" value="<?php echo h((string)$img['id']); ?>"></td>
+          </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+    <script>
+      (function () {
+        const table = document.getElementById('sale-image-table');
+        if (!table) return;
+        const tbody = table.querySelector('tbody');
+        let dragRow = null;
+
+        function updateSort() {
+          const rows = tbody.querySelectorAll('.draggable-row');
+          rows.forEach((row, index) => {
+            const input = row.querySelector('input[type="number"]');
+            if (input) {
+              input.value = index + 1;
+            }
+          });
+        }
+
+        tbody.addEventListener('dragstart', (event) => {
+          const row = event.target.closest('.draggable-row');
+          if (!row) return;
+          dragRow = row;
+          event.dataTransfer.effectAllowed = 'move';
+          row.classList.add('dragging');
+        });
+
+        tbody.addEventListener('dragend', () => {
+          if (dragRow) {
+            dragRow.classList.remove('dragging');
+            dragRow = null;
+          }
+          updateSort();
+        });
+
+        tbody.addEventListener('dragover', (event) => {
+          event.preventDefault();
+          const row = event.target.closest('.draggable-row');
+          if (!row || row === dragRow) return;
+          const rect = row.getBoundingClientRect();
+          const next = (event.clientY - rect.top) > rect.height / 2;
+          tbody.insertBefore(dragRow, next ? row.nextSibling : row);
+        });
+      })();
+    </script>
+  <?php else: ?>
+    <p>画像は未登録です。</p>
+  <?php endif; ?>
+  <?php endif; ?>
 </form>
 

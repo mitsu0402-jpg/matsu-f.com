@@ -36,25 +36,26 @@ $pageTitle = $titleMap[$currentPage] ?? 'ダッシュボード';
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></title>
+  <link rel="stylesheet" href="assets/css/admin.css">
 </head>
-<body>
-  <header>
-    <h1>管理画面</h1>
-    <nav>
-      <a href="index.php?page=dashboard">ダッシュボード</a>
-      <a href="index.php?page=sale_create">売り物件新規登録</a>
-      <a href="index.php?page=sale_list">売り物件一覧</a>
-      <a href="index.php?page=sale_edit">売り物件編集</a>
-      <a href="index.php?page=rent_create">賃貸物件新規登録</a>
-      <a href="index.php?page=rent_list">賃貸物件一覧</a>
-      <a href="index.php?page=rent_edit">賃貸物件編集</a>
-      <a href="index.php?page=area_list">エリア一覧</a>
-      <a href="index.php?page=area_edit">エリア編集</a>
-      <a href="index.php?page=settings">設定</a>
-    </nav>
+<body class="admin">
+  <header class="app-header">
+    <div class="brand">松永不動産</div>
+    <div class="header-title">管理画面</div>
   </header>
 
-  <main>
+  <nav class="nav-grid">
+    <a class="nav-card" href="index.php?page=dashboard">ダッシュボード</a>
+    <a class="nav-card" href="index.php?page=sale_create">売り物件新規登録</a>
+    <a class="nav-card" href="index.php?page=sale_list">売り物件一覧</a>
+    <a class="nav-card" href="index.php?page=rent_create">賃貸物件新規登録</a>
+    <a class="nav-card" href="index.php?page=rent_list">賃貸物件一覧</a>
+    <a class="nav-card" href="index.php?page=area_list">エリア一覧</a>
+    <a class="nav-card" href="index.php?page=area_edit">エリア編集</a>
+    <a class="nav-card" href="index.php?page=settings">設定</a>
+  </nav>
+
+  <main class="content">
     <h2><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></h2>
     <?php if (is_file($viewFile)): ?>
       <?php include $viewFile; ?>
