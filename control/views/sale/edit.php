@@ -11,6 +11,15 @@ function post_value(string $key): string
     return isset($_POST[$key]) ? trim((string)$_POST[$key]) : '';
 }
 
+function post_bool(string $key): string
+{
+    if (!isset($_POST[$key])) {
+        return '0';
+    }
+    $value = $_POST[$key];
+    return ($value === '1' || $value === 1 || $value === true || $value === 'true' || $value === 't' || $value === 'yes') ? '1' : '0';
+}
+
 $fields = [
     'status',
     'name',
@@ -84,6 +93,11 @@ try {
             $values[$field] = post_value($field);
         }
 
+        $values['parking'] = post_bool('parking');
+        $values['pets_allowed'] = post_bool('pets_allowed');
+        $values['balcony_garden'] = post_bool('balcony_garden');
+        $values['osusume'] = post_bool('osusume');
+
         $values['status'] = (int)($values['status'] !== '' ? $values['status'] : 1);
         $values['shinchiku'] = (int)($values['shinchiku'] !== '' ? $values['shinchiku'] : 0);
         $values['sort'] = (int)($values['sort'] !== '' ? $values['sort'] : 0);
@@ -150,15 +164,63 @@ try {
     </label>
   </div>
   <div><label>物件名 <input type="text" name="name" value="<?php echo h((string)$values['name']); ?>"></label></div>
-  <div><label>種別 <input type="text" name="cate" value="<?php echo h((string)$values['cate']); ?>"></label></div>
+  <div>
+    <label>種別
+      <select name="cate">
+        <?php
+        $saleCateOptions = ['一戸建て', '土地', 'マンション', 'アパート', '駐車場', '店舗', '事務所', 'その他'];
+        foreach ($saleCateOptions as $option):
+          $selected = ((string)$values['cate'] === $option) ? 'selected' : '';
+        ?>
+          <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+  </div>
   <div><label>キャッチコピー <input type="text" name="catchCopy" value="<?php echo h((string)$values['catchCopy']); ?>"></label></div>
   <div><label>所在地 <input type="text" name="location" value="<?php echo h((string)$values['location']); ?>"></label></div>
   <div><label>価格 <input type="text" name="price" value="<?php echo h((string)$values['price']); ?>"></label></div>
-  <div><label>取引態様 <input type="text" name="transaction_type" value="<?php echo h((string)$values['transaction_type']); ?>"></label></div>
-  <div><label>間取り <input type="text" name="floor_plan" value="<?php echo h((string)$values['floor_plan']); ?>"></label></div>
+  <div>
+    <label>取引態様
+      <select name="transaction_type">
+        <?php
+        $transactionOptions = ['一般媒介', '専任媒介', '専属専任媒介', '売主', '代理', '仲介', 'その他'];
+        foreach ($transactionOptions as $option):
+          $selected = ((string)$values['transaction_type'] === $option) ? 'selected' : '';
+        ?>
+          <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+  </div>
+  <div>
+    <label>間取り
+      <select name="floor_plan">
+        <?php
+        $floorPlanOptions = ['1K', '1DK', '1LDK', '2K', '2DK', '2LDK', '3K', '3DK', '3LDK', '4K', '4DK', '4LDK', '5K', '5DK', '5LDK', '6K', '6DK', '6LDK', 'その他'];
+        foreach ($floorPlanOptions as $option):
+          $selected = ((string)$values['floor_plan'] === $option) ? 'selected' : '';
+        ?>
+          <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+  </div>
   <div><label>土地面積 <input type="text" name="land_area" value="<?php echo h((string)$values['land_area']); ?>"></label></div>
   <div><label>建物面積 <input type="text" name="building_area" value="<?php echo h((string)$values['building_area']); ?>"></label></div>
-  <div><label>築年数 <input type="text" name="age" value="<?php echo h((string)$values['age']); ?>"></label></div>
+  <div>
+    <label>築年数
+      <select name="age">
+        <?php
+        $ageOptions = ['新築', '1年', '2年', '3年', '4年', '5年', '6年', '7年', '8年', '9年', '10年', '15年', '20年', '25年', '30年', '35年', '40年', '45年', '50年', '不明'];
+        foreach ($ageOptions as $option):
+          $selected = ((string)$values['age'] === $option) ? 'selected' : '';
+        ?>
+          <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+  </div>
   <div><label>建築年月 <input type="text" name="construction_date" value="<?php echo h((string)$values['construction_date']); ?>"></label></div>
   <div>
     <label>新築
@@ -168,22 +230,154 @@ try {
       </select>
     </label>
   </div>
-  <div><label>構造 <input type="text" name="structure" value="<?php echo h((string)$values['structure']); ?>"></label></div>
-  <div><label>階数 <input type="text" name="floors" value="<?php echo h((string)$values['floors']); ?>"></label></div>
-  <div><label>方位 <input type="text" name="direction" value="<?php echo h((string)$values['direction']); ?>"></label></div>
-  <div><label>バルコニー・庭 <input type="text" name="balcony_garden" value="<?php echo h((string)$values['balcony_garden']); ?>"></label></div>
-  <div><label>駐車場 <input type="text" name="parking" value="<?php echo h((string)$values['parking']); ?>"></label></div>
+  <div>
+    <label>構造
+      <select name="structure">
+        <?php
+        $structureOptions = ['木造', '軽量鉄骨', '鉄骨造', '鉄筋コンクリート', '鉄骨鉄筋コンクリート', 'その他'];
+        foreach ($structureOptions as $option):
+          $selected = ((string)$values['structure'] === $option) ? 'selected' : '';
+        ?>
+          <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+  </div>
+  <div>
+    <label>階数
+      <select name="floors">
+        <?php
+        $floorOptions = ['1階', '2階', '3階', '4階', '5階', '6階', '7階', '8階', '9階', '10階', '11階以上', '地下1階', '地下2階', '不明'];
+        foreach ($floorOptions as $option):
+          $selected = ((string)$values['floors'] === $option) ? 'selected' : '';
+        ?>
+          <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+  </div>
+  <div>
+    <label>方位
+      <select name="direction">
+        <?php
+        $directionOptions = ['北', '北東', '東', '南東', '南', '南西', '西', '北西', '不明', 'その他'];
+        foreach ($directionOptions as $option):
+          $selected = ((string)$values['direction'] === $option) ? 'selected' : '';
+        ?>
+          <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+  </div>
+  <div>
+    <label>バルコニー・庭
+      <select name="balcony_garden">
+        <option value="1" <?php echo ((string)$values['balcony_garden'] === '1') ? 'selected' : ''; ?>>有り</option>
+        <option value="0" <?php echo ((string)$values['balcony_garden'] === '0') ? 'selected' : ''; ?>>無し</option>
+      </select>
+    </label>
+  </div>
+  <div>
+    <label>駐車場
+      <select name="parking">
+        <option value="1" <?php echo ((string)$values['parking'] === '1') ? 'selected' : ''; ?>>有り</option>
+        <option value="0" <?php echo ((string)$values['parking'] === '0') ? 'selected' : ''; ?>>無し</option>
+      </select>
+    </label>
+  </div>
   <div><label>最寄駅距離 <input type="text" name="distance_to_station" value="<?php echo h((string)$values['distance_to_station']); ?>"></label></div>
   <div><label>利用可能路線 <input type="text" name="available_lines" value="<?php echo h((string)$values['available_lines']); ?>"></label></div>
   <div><label>近隣施設 <input type="text" name="shops" value="<?php echo h((string)$values['shops']); ?>"></label></div>
   <div><label>教育施設 <input type="text" name="schools" value="<?php echo h((string)$values['schools']); ?>"></label></div>
   <div><label>医療機関 <input type="text" name="hospitals" value="<?php echo h((string)$values['hospitals']); ?>"></label></div>
   <div><label>公園・公共施設 <input type="text" name="parks_facilities" value="<?php echo h((string)$values['parks_facilities']); ?>"></label></div>
-  <div><label>土地権利 <input type="text" name="land_rights" value="<?php echo h((string)$values['land_rights']); ?>"></label></div>
-  <div><label>都市計画 <input type="text" name="urban_planning" value="<?php echo h((string)$values['urban_planning']); ?>"></label></div>
-  <div><label>用途地域 <input type="text" name="zoning" value="<?php echo h((string)$values['zoning']); ?>"></label></div>
-  <div><label>建ぺい率 <input type="text" name="building_coverage_ratio" value="<?php echo h((string)$values['building_coverage_ratio']); ?>"></label></div>
-  <div><label>容積率 <input type="text" name="floor_area_ratio" value="<?php echo h((string)$values['floor_area_ratio']); ?>"></label></div>
+  <div>
+    <label>土地権利
+      <select name="land_rights">
+        <?php
+        $landRightsOptions = ['所有権', '借地権', '定期借地権', '地上権', '賃借権', 'その他'];
+        foreach ($landRightsOptions as $option):
+          $selected = ((string)$values['land_rights'] === $option) ? 'selected' : '';
+        ?>
+          <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+  </div>
+  <div>
+    <label>都市計画
+      <select name="urban_planning">
+        <?php
+        $urbanPlanningOptions = ['市街化区域', '市街化調整区域', '非線引区域', '準都市計画区域', 'その他'];
+        foreach ($urbanPlanningOptions as $option):
+          $selected = ((string)$values['urban_planning'] === $option) ? 'selected' : '';
+        ?>
+          <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+  </div>
+  <div>
+    <label>用途地域
+      <select name="zoning">
+        <?php
+        $zoningOptions = [
+          '第一種低層住居専用地域',
+          '第二種低層住居専用地域',
+          '第一種中高層住居専用地域',
+          '第二種中高層住居専用地域',
+          '第一種住居地域',
+          '第二種住居地域',
+          '準住居地域',
+          '近隣商業地域',
+          '商業地域',
+          '準工業地域',
+          '工業地域',
+          '工業専用地域',
+          'その他',
+        ];
+        foreach ($zoningOptions as $option):
+          $selected = ((string)$values['zoning'] === $option) ? 'selected' : '';
+        ?>
+          <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+  </div>
+  <div>
+    <label>建ぺい率
+      <select name="building_coverage_ratio">
+        <?php
+        $coverageOptions = ['40%', '50%', '60%', '70%', '80%', '90%', '100%'];
+        $coverageValue = (string)$values['building_coverage_ratio'];
+        if ($coverageValue === '') {
+          $coverageValue = '60%';
+        }
+        foreach ($coverageOptions as $option):
+          $selected = ($coverageValue === $option) ? 'selected' : '';
+        ?>
+          <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+  </div>
+  <div>
+    <label>容積率
+      <select name="floor_area_ratio">
+        <?php
+        $floorAreaOptions = ['60%', '80%', '100%', '120%', '150%', '160%', '200%', '250%', '300%', '400%', '500%', '600%'];
+        $floorAreaValue = (string)$values['floor_area_ratio'];
+        if ($floorAreaValue === '') {
+          $floorAreaValue = '60%';
+        }
+        foreach ($floorAreaOptions as $option):
+          $selected = ($floorAreaValue === $option) ? 'selected' : '';
+        ?>
+          <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+  </div>
   <div><label>接道状況 <input type="text" name="road_conditions" value="<?php echo h((string)$values['road_conditions']); ?>"></label></div>
   <div><label>法令制限 <input type="text" name="legal_restrictions" value="<?php echo h((string)$values['legal_restrictions']); ?>"></label></div>
   <div><label>キッチン/バス/トイレ <input type="text" name="kitchen_bath_toilet" value="<?php echo h((string)$values['kitchen_bath_toilet']); ?>"></label></div>
@@ -194,10 +388,29 @@ try {
   <div><label>修繕積立金 <input type="text" name="repair_fund" value="<?php echo h((string)$values['repair_fund']); ?>"></label></div>
   <div><label>管理形態 <input type="text" name="management_type" value="<?php echo h((string)$values['management_type']); ?>"></label></div>
   <div><label>管理会社 <input type="text" name="management_company" value="<?php echo h((string)$values['management_company']); ?>"></label></div>
-  <div><label>現況 <input type="text" name="current_status" value="<?php echo h((string)$values['current_status']); ?>"></label></div>
+  <div>
+    <label>現況
+      <select name="current_status">
+        <?php
+        $currentStatusOptions = ['空室', '居住中', '賃貸中', '更地', '建築中', '完成済', 'その他'];
+        foreach ($currentStatusOptions as $option):
+          $selected = ((string)$values['current_status'] === $option) ? 'selected' : '';
+        ?>
+          <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+  </div>
   <div><label>建築確認番号 <input type="text" name="building_confirmation_number" value="<?php echo h((string)$values['building_confirmation_number']); ?>"></label></div>
   <div><label>引渡し時期 <input type="text" name="handover_time" value="<?php echo h((string)$values['handover_time']); ?>"></label></div>
-  <div><label>ペット可否 <input type="text" name="pets_allowed" value="<?php echo h((string)$values['pets_allowed']); ?>"></label></div>
+  <div>
+    <label>ペット可否
+      <select name="pets_allowed">
+        <option value="1" <?php echo ((string)$values['pets_allowed'] === '1') ? 'selected' : ''; ?>>可</option>
+        <option value="0" <?php echo ((string)$values['pets_allowed'] === '0') ? 'selected' : ''; ?>>不可</option>
+      </select>
+    </label>
+  </div>
   <div>
     <label>リフォーム履歴
       <textarea name="renovation_history" rows="3"><?php echo h((string)$values['renovation_history']); ?></textarea>
@@ -214,8 +427,8 @@ try {
   <div>
     <label>おすすめ
       <select name="osusume">
-        <option value="1" <?php echo ((int)$values['osusume'] === 1) ? 'selected' : ''; ?>>おすすめ</option>
-        <option value="0" <?php echo ((int)$values['osusume'] === 0) ? 'selected' : ''; ?>>通常</option>
+        <option value="1" <?php echo ((string)$values['osusume'] === '1') ? 'selected' : ''; ?>>Yes</option>
+        <option value="0" <?php echo ((string)$values['osusume'] === '0') ? 'selected' : ''; ?>>No</option>
       </select>
     </label>
   </div>
