@@ -1,0 +1,4 @@
+/control/config/database.php
+/control/logs/
+/control/uploads/
+/.vscode/sftp.json
