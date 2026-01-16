@@ -35,7 +35,7 @@ body.admin {
 }
 
 .brand {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--accent);
@@ -102,6 +102,16 @@ label {
   color: var(--muted);
 }
 
+.label-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.req {
+  color: #d00;
+}
+
 input[type="text"],
 input[type="number"],
 input[type="email"],
@@ -137,7 +147,10 @@ table {
   overflow: hidden;
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
-  display: block;
+}
+
+.table-scroll {
+  width: 100%;
   overflow-x: auto;
 }
 
@@ -175,5 +188,14 @@ tr:last-child td {
 
   .content {
     padding: 0 16px 32px;
+  }
+
+  .table-scroll th:nth-child(3),
+  .table-scroll td:nth-child(3),
+  .table-scroll th:nth-child(6),
+  .table-scroll td:nth-child(6),
+  .table-scroll th:nth-child(7),
+  .table-scroll td:nth-child(7) {
+    display: none;
   }
 }

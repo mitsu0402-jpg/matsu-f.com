@@ -218,6 +218,78 @@ try {
 
 <form method="post" action="" enctype="multipart/form-data">
   <input type="hidden" name="id" value="<?php echo h((string)$id); ?>">
+
+  <?php if ($id): ?>
+  <div>
+    <label>画像追加 <input type="file" name="images[]" multiple></label>
+  </div>
+  <?php if ($imageRows): ?>
+    <table id="sale-image-table">
+      <thead>
+        <tr>
+          <th>画像</th>
+          <th>並び順</th>
+          <th>削除</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($imageRows as $img): ?>
+          <tr class="draggable-row" draggable="true" data-image-id="<?php echo h((string)$img['id']); ?>">
+            <td><img src="../<?php echo h($img['file_path']); ?>" alt="" style="max-width:120px;"></td>
+            <td><input type="number" name="image_sort[<?php echo h((string)$img['id']); ?>]" value="<?php echo h((string)$img['sort']); ?>"></td>
+            <td><input type="checkbox" name="delete_image[]" value="<?php echo h((string)$img['id']); ?>"></td>
+          </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+    <script>
+      (function () {
+        const table = document.getElementById('sale-image-table');
+        if (!table) return;
+        const tbody = table.querySelector('tbody');
+        let dragRow = null;
+
+        function updateSort() {
+          const rows = tbody.querySelectorAll('.draggable-row');
+          rows.forEach((row, index) => {
+            const input = row.querySelector('input[type="number"]');
+            if (input) {
+              input.value = index + 1;
+            }
+          });
+        }
+
+        tbody.addEventListener('dragstart', (event) => {
+          const row = event.target.closest('.draggable-row');
+          if (!row) return;
+          dragRow = row;
+          event.dataTransfer.effectAllowed = 'move';
+          row.classList.add('dragging');
+        });
+
+        tbody.addEventListener('dragend', () => {
+          if (dragRow) {
+            dragRow.classList.remove('dragging');
+            dragRow = null;
+          }
+          updateSort();
+        });
+
+        tbody.addEventListener('dragover', (event) => {
+          event.preventDefault();
+          const row = event.target.closest('.draggable-row');
+          if (!row || row === dragRow) return;
+          const rect = row.getBoundingClientRect();
+          const next = (event.clientY - rect.top) > rect.height / 2;
+          tbody.insertBefore(dragRow, next ? row.nextSibling : row);
+        });
+      })();
+    </script>
+  <?php else: ?>
+    <p>画像は未登録です。</p>
+  <?php endif; ?>
+  <hr>
+  <?php endif; ?>
   <div>
     <label>公開状態
       <select name="status">
@@ -226,7 +298,7 @@ try {
       </select>
     </label>
   </div>
-  <div><label>物件名 <span style="color:#d00;">※</span> <input type="text" name="name" value="<?php echo h((string)$values['name']); ?>" required></label></div>
+  <div><label><span class="label-title">物件名 <span class="req">※</span></span><input type="text" name="name" value="<?php echo h((string)$values['name']); ?>" required></label></div>
   <div>
     <label>種別
       <select name="cate">
@@ -242,7 +314,7 @@ try {
   </div>
   <div><label>キャッチコピー <input type="text" name="catchCopy" value="<?php echo h((string)$values['catchCopy']); ?>"></label></div>
   <div><label>所在地 <input type="text" name="location" value="<?php echo h((string)$values['location']); ?>"></label></div>
-  <div><label>価格 <span style="color:#d00;">※</span> <input type="text" name="price" value="<?php echo h((string)$values['price']); ?>" required></label></div>
+  <div><label><span class="label-title">価格 <span class="req">※</span></span><input type="text" name="price" value="<?php echo h((string)$values['price']); ?>" required></label></div>
   <div>
     <label>取引態様
       <select name="transaction_type">
@@ -499,76 +571,5 @@ try {
     <button type="submit">保存</button>
   </div>
 
-  <?php if ($id): ?>
-  <hr>
-  <div>
-    <label>画像追加 <input type="file" name="images[]" multiple></label>
-  </div>
-  <?php if ($imageRows): ?>
-    <table id="sale-image-table">
-      <thead>
-        <tr>
-          <th>画像</th>
-          <th>並び順</th>
-          <th>削除</th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php foreach ($imageRows as $img): ?>
-          <tr class="draggable-row" draggable="true" data-image-id="<?php echo h((string)$img['id']); ?>">
-            <td><img src="../<?php echo h($img['file_path']); ?>" alt="" style="max-width:120px;"></td>
-            <td><input type="number" name="image_sort[<?php echo h((string)$img['id']); ?>]" value="<?php echo h((string)$img['sort']); ?>"></td>
-            <td><input type="checkbox" name="delete_image[]" value="<?php echo h((string)$img['id']); ?>"></td>
-          </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
-    <script>
-      (function () {
-        const table = document.getElementById('sale-image-table');
-        if (!table) return;
-        const tbody = table.querySelector('tbody');
-        let dragRow = null;
-
-        function updateSort() {
-          const rows = tbody.querySelectorAll('.draggable-row');
-          rows.forEach((row, index) => {
-            const input = row.querySelector('input[type="number"]');
-            if (input) {
-              input.value = index + 1;
-            }
-          });
-        }
-
-        tbody.addEventListener('dragstart', (event) => {
-          const row = event.target.closest('.draggable-row');
-          if (!row) return;
-          dragRow = row;
-          event.dataTransfer.effectAllowed = 'move';
-          row.classList.add('dragging');
-        });
-
-        tbody.addEventListener('dragend', () => {
-          if (dragRow) {
-            dragRow.classList.remove('dragging');
-            dragRow = null;
-          }
-          updateSort();
-        });
-
-        tbody.addEventListener('dragover', (event) => {
-          event.preventDefault();
-          const row = event.target.closest('.draggable-row');
-          if (!row || row === dragRow) return;
-          const rect = row.getBoundingClientRect();
-          const next = (event.clientY - rect.top) > rect.height / 2;
-          tbody.insertBefore(dragRow, next ? row.nextSibling : row);
-        });
-      })();
-    </script>
-  <?php else: ?>
-    <p>画像は未登録です。</p>
-  <?php endif; ?>
-  <?php endif; ?>
 </form>
 

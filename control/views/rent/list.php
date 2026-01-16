@@ -31,7 +31,7 @@ try {
         $params['status'] = (int)$status;
     }
 
-    $sql = 'SELECT id, name, cate, price, location, status, parking, pets_allowed, lastUpdateDate FROM `rent_properties`';
+    $sql = 'SELECT id, name, cate, price, location, status, lastUpdateDate FROM `rent_properties`';
     if ($where) {
         $sql .= ' WHERE ' . implode(' AND ', $where);
     }
@@ -66,6 +66,7 @@ try {
 <?php endif; ?>
 
 <section>
+  <div class="table-scroll">
   <table>
     <thead>
       <tr>
@@ -74,8 +75,6 @@ try {
         <th>種別</th>
         <th>賃料</th>
         <th>所在地</th>
-        <th>駐車場</th>
-        <th>ペット</th>
         <th>公開状態</th>
         <th>更新日</th>
         <th>操作</th>
@@ -92,8 +91,6 @@ try {
             <td><?php echo h((string)$row['cate']); ?></td>
             <td><?php echo h((string)$row['price']); ?></td>
             <td><?php echo h((string)$row['location']); ?></td>
-            <td><?php echo ((string)$row['parking'] === '1') ? '有り' : '無し'; ?></td>
-            <td><?php echo ((string)$row['pets_allowed'] === '1') ? '可' : '不可'; ?></td>
             <td><?php echo ((int)$row['status'] === 1) ? '公開' : '下書き'; ?></td>
             <td><?php echo h((string)$row['lastUpdateDate']); ?></td>
             <td><a href="index.php?page=rent_edit&id=<?php echo h((string)$row['id']); ?>">編集</a></td>
@@ -102,5 +99,6 @@ try {
       <?php endif; ?>
     </tbody>
   </table>
+  </div>
 </section>
 

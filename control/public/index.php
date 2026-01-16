@@ -40,7 +40,7 @@ $pageTitle = $titleMap[$currentPage] ?? 'ダッシュボード';
 </head>
 <body class="admin">
   <header class="app-header">
-    <div class="brand">松永不動産</div>
+    <div class="brand">松永不動産　コントロールパネル</div>
     <div class="header-title">管理画面</div>
   </header>
 

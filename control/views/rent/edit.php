@@ -214,7 +214,7 @@ try {
       </select>
     </label>
   </div>
-  <div><label>物件名 <span style="color:#d00;">※</span> <input type="text" name="name" value="<?php echo h((string)$values['name']); ?>" required></label></div>
+  <div><label><span class="label-title">物件名 <span class="req">※</span></span><input type="text" name="name" value="<?php echo h((string)$values['name']); ?>" required></label></div>
   <div>
     <label>種別
       <select name="cate">
@@ -231,7 +231,7 @@ try {
   <div><label>キャッチコピー <input type="text" name="catchCopy" value="<?php echo h((string)$values['catchCopy']); ?>"></label></div>
   <div><label>備考（短文） <input type="text" name="notes" value="<?php echo h((string)$values['notes']); ?>"></label></div>
   <div><label>所在地 <input type="text" name="location" value="<?php echo h((string)$values['location']); ?>"></label></div>
-  <div><label>賃料 <span style="color:#d00;">※</span> <input type="text" name="price" value="<?php echo h((string)$values['price']); ?>" required></label></div>
+  <div><label><span class="label-title">賃料 <span class="req">※</span></span><input type="text" name="price" value="<?php echo h((string)$values['price']); ?>" required></label></div>
   <div><label>敷金 <input type="text" name="deposit_fee" value="<?php echo h((string)$values['deposit_fee']); ?>"></label></div>
   <div><label>礼金 <input type="text" name="key_money" value="<?php echo h((string)$values['key_money']); ?>"></label></div>
   <div><label>保証料 <input type="text" name="guarantee_fee" value="<?php echo h((string)$values['guarantee_fee']); ?>"></label></div>
