@@ -11,19 +11,21 @@ $routes = [
     'rent_edit' => __DIR__ . '/../views/rent/edit.php',
     'area_list' => __DIR__ . '/../views/area/list.php',
     'area_edit' => __DIR__ . '/../views/area/edit.php',
+    'news_list' => __DIR__ . '/../views/news/list.php',
     'settings' => __DIR__ . '/../views/settings/index.php',
 ];
 
 $titleMap = [
     'dashboard' => 'ダッシュボード',
-    'sale_create' => '売り物件新規登録',
-    'sale_list' => '売り物件一覧',
+    'sale_create' => '売り物件追加',
+    'sale_list' => '売り一覧',
     'sale_edit' => '売り物件編集',
-    'rent_create' => '賃貸物件新規登録',
-    'rent_list' => '賃貸物件一覧',
+    'rent_create' => '賃貸物件追加',
+    'rent_list' => '賃貸一覧',
     'rent_edit' => '賃貸物件編集',
     'area_list' => 'エリア一覧',
     'area_edit' => 'エリア編集',
+    'news_list' => 'お知らせ一覧',
     'settings' => '設定',
 ];
 
@@ -45,14 +47,14 @@ $pageTitle = $titleMap[$currentPage] ?? 'ダッシュボード';
   </header>
 
   <nav class="nav-grid">
-    <a class="nav-card" href="index.php?page=dashboard">ダッシュボード</a>
-    <a class="nav-card" href="index.php?page=sale_create">売り物件新規登録</a>
-    <a class="nav-card" href="index.php?page=sale_list">売り物件一覧</a>
-    <a class="nav-card" href="index.php?page=rent_create">賃貸物件新規登録</a>
-    <a class="nav-card" href="index.php?page=rent_list">賃貸物件一覧</a>
-    <a class="nav-card" href="index.php?page=area_list">エリア一覧</a>
-    <a class="nav-card" href="index.php?page=area_edit">エリア編集</a>
-    <a class="nav-card" href="index.php?page=settings">設定</a>
+    <a class="nav-card nav-card-1" href="index.php?page=dashboard">ダッシュボード</a>
+    <a class="nav-card nav-card-7" href="index.php?page=news_list">お知らせ一覧</a>
+    <a class="nav-card nav-card-2" href="index.php?page=sale_create">売り物件追加</a>
+    <a class="nav-card nav-card-3" href="index.php?page=sale_list">売り物件一覧</a>
+    <a class="nav-card nav-card-4" href="index.php?page=rent_create">賃貸物件追加</a>
+    <a class="nav-card nav-card-5" href="index.php?page=rent_list">賃貸物件一覧</a>
+    <a class="nav-card nav-card-6" href="index.php?page=area_list">エリア一覧</a>
+    <a class="nav-card nav-card-8" href="index.php?page=settings">設定</a>
   </nav>
 
   <main class="content">

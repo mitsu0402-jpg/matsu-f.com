@@ -26,6 +26,8 @@ $fields = [
     'cate',
     'catchCopy',
     'location',
+    'lat',
+    'lng',
     'price',
     'transaction_type',
     'floor_plan',
@@ -81,6 +83,8 @@ $values = $defaults;
 $message = '';
 $error = '';
 $imageRows = [];
+$googleConfig = require __DIR__ . '/../../config/google.php';
+$mapsApiKey = trim((string)($googleConfig['maps_js_api_key'] ?? ''));
 
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 
@@ -118,6 +122,14 @@ try {
             $params['id'] = $id;
             $stmt->execute($params);
             $message = '更新しました。';
+
+            if ((int)$values['status'] === 0) {
+                $noticeStmt = $pdo->prepare('UPDATE notices SET status = 0, updated_at = NOW() WHERE title = :title AND body = :body');
+                $noticeStmt->execute([
+                    'title' => '売り物件を追加しました',
+                    'body' => (string)$values['name'],
+                ]);
+            }
         } else {
             $columns = array_merge($fields, ['firstAddDate', 'lastUpdateDate']);
             $placeholders = array_map(function ($col) {
@@ -131,6 +143,24 @@ try {
             $stmt->execute($params);
             $id = (int)$pdo->lastInsertId();
             $message = '登録しました。';
+
+            if ((int)$values['status'] === 1) {
+                $noticeTitle = '売り物件を追加しました';
+                $noticeBody = trim((string)$values['name']);
+                if ($noticeBody === '') {
+                    $noticeBody = '新しい売り物件を追加しました。';
+                }
+                $noticeLink = 'https://matsu-f.com/sale.php?id=' . $id;
+                $noticeStmt = $pdo->prepare('INSERT INTO notices (title, body, link_url, published_at, sort, status, created_at, updated_at) VALUES (:title, :body, :link_url, :published_at, :sort, :status, NOW(), NOW())');
+                $noticeStmt->execute([
+                    'title' => $noticeTitle,
+                    'body' => $noticeBody,
+                    'link_url' => $noticeLink,
+                    'published_at' => $now,
+                    'sort' => 0,
+                    'status' => 1,
+                ]);
+            }
         }
 
         if ($id) {
@@ -216,6 +246,10 @@ try {
   <p><?php echo h($error); ?></p>
 <?php endif; ?>
 
+<?php if (!$id): ?>
+  <p>必要情報を入力して、保存後に画像の追加ができます。</p>
+<?php endif; ?>
+
 <form method="post" action="" enctype="multipart/form-data">
   <input type="hidden" name="id" value="<?php echo h((string)$id); ?>">
 
@@ -224,7 +258,7 @@ try {
     <label>画像追加 <input type="file" name="images[]" multiple></label>
   </div>
   <?php if ($imageRows): ?>
-    <table id="sale-image-table">
+    <table id="sale-image-table" class="image-table">
       <thead>
         <tr>
           <th>画像</th>
@@ -290,6 +324,7 @@ try {
   <?php endif; ?>
   <hr>
   <?php endif; ?>
+  <div class="field-grid">
   <div>
     <label>公開状態
       <select name="status">
@@ -313,7 +348,9 @@ try {
     </label>
   </div>
   <div><label>キャッチコピー <input type="text" name="catchCopy" value="<?php echo h((string)$values['catchCopy']); ?>"></label></div>
-  <div><label>所在地 <input type="text" name="location" value="<?php echo h((string)$values['location']); ?>"></label></div>
+  <div><label>所在地 <input type="text" id="sale-location" name="location" value="<?php echo h((string)$values['location']); ?>"></label></div>
+  <div><label>緯度 <input type="text" id="sale-lat" name="lat" value="<?php echo h((string)$values['lat']); ?>"></label></div>
+  <div><label>経度 <input type="text" id="sale-lng" name="lng" value="<?php echo h((string)$values['lng']); ?>"></label></div>
   <div><label><span class="label-title">価格 <span class="req">※</span></span><input type="text" name="price" value="<?php echo h((string)$values['price']); ?>" required></label></div>
   <div>
     <label>取引態様
@@ -546,14 +583,14 @@ try {
       </select>
     </label>
   </div>
-  <div>
+  <div class="span-2">
     <label>リフォーム履歴
       <textarea name="renovation_history" rows="3"><?php echo h((string)$values['renovation_history']); ?></textarea>
     </label>
   </div>
   <div><label>学校区 <input type="text" name="school_district" value="<?php echo h((string)$values['school_district']); ?>"></label></div>
   <div><label>その他 <input type="text" name="sonota" value="<?php echo h((string)$values['sonota']); ?>"></label></div>
-  <div>
+  <div class="span-2">
     <label>備考
       <textarea name="notes" rows="4"><?php echo h((string)$values['notes']); ?></textarea>
     </label>
@@ -567,9 +604,44 @@ try {
       </select>
     </label>
   </div>
-  <div>
+  <div class="span-2">
     <button type="submit">保存</button>
+  </div>
   </div>
 
 </form>
+
+<?php if ($mapsApiKey !== ''): ?>
+  <script src="https://maps.googleapis.com/maps/api/js?key=<?php echo h($mapsApiKey); ?>"></script>
+  <script>
+    (function () {
+      var locationInput = document.getElementById('sale-location');
+      var latInput = document.getElementById('sale-lat');
+      var lngInput = document.getElementById('sale-lng');
+      if (!locationInput || !latInput || !lngInput || !window.google || !google.maps) {
+        return;
+      }
+      var geocoder = new google.maps.Geocoder();
+      var lastQuery = '';
+
+      function geocodeAddress() {
+        var address = locationInput.value.trim();
+        if (!address || address === lastQuery) {
+          return;
+        }
+        lastQuery = address;
+        geocoder.geocode({ address: address }, function (results, status) {
+          if (status !== 'OK' || !results || !results[0]) {
+            return;
+          }
+          var loc = results[0].geometry.location;
+          latInput.value = loc.lat().toFixed(7);
+          lngInput.value = loc.lng().toFixed(7);
+        });
+      }
+
+      locationInput.addEventListener('blur', geocodeAddress);
+    })();
+  </script>
+<?php endif; ?>
 

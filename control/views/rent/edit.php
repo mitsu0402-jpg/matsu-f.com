@@ -27,6 +27,8 @@ $fields = [
     'catchCopy',
     'notes',
     'location',
+    'lat',
+    'lng',
     'price',
     'deposit_fee',
     'key_money',
@@ -68,6 +70,8 @@ $values = $defaults;
 $message = '';
 $error = '';
 $imageRows = [];
+$googleConfig = require __DIR__ . '/../../config/google.php';
+$mapsApiKey = trim((string)($googleConfig['maps_js_api_key'] ?? ''));
 
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 
@@ -106,6 +110,14 @@ try {
             $params['id'] = $id;
             $stmt->execute($params);
             $message = '更新しました。';
+
+            if ((int)$values['status'] === 0) {
+                $noticeStmt = $pdo->prepare('UPDATE notices SET status = 0, updated_at = NOW() WHERE title = :title AND body = :body');
+                $noticeStmt->execute([
+                    'title' => '賃貸物件を追加しました',
+                    'body' => (string)$values['name'],
+                ]);
+            }
         } else {
             $columns = array_merge($fields, ['firstAddDate', 'lastUpdateDate']);
             $placeholders = array_map(function ($col) {
@@ -119,6 +131,24 @@ try {
             $stmt->execute($params);
             $id = (int)$pdo->lastInsertId();
             $message = '登録しました。';
+
+            if ((int)$values['status'] === 1) {
+                $noticeTitle = '賃貸物件を追加しました';
+                $noticeBody = trim((string)$values['name']);
+                if ($noticeBody === '') {
+                    $noticeBody = '新しい賃貸物件を追加しました。';
+                }
+                $noticeLink = 'https://matsu-f.com/rent.php?id=' . $id;
+                $noticeStmt = $pdo->prepare('INSERT INTO notices (title, body, link_url, published_at, sort, status, created_at, updated_at) VALUES (:title, :body, :link_url, :published_at, :sort, :status, NOW(), NOW())');
+                $noticeStmt->execute([
+                    'title' => $noticeTitle,
+                    'body' => $noticeBody,
+                    'link_url' => $noticeLink,
+                    'published_at' => $now,
+                    'sort' => 0,
+                    'status' => 1,
+                ]);
+            }
         }
 
         if ($id) {
@@ -204,8 +234,85 @@ try {
   <p><?php echo h($error); ?></p>
 <?php endif; ?>
 
+<?php if (!$id): ?>
+  <p>必要情報を入力して、保存後に画像の追加ができます。</p>
+<?php endif; ?>
+
 <form method="post" action="" enctype="multipart/form-data">
   <input type="hidden" name="id" value="<?php echo h((string)$id); ?>">
+
+  <?php if ($id): ?>
+  <div>
+    <label>画像追加 <input type="file" name="images[]" multiple></label>
+  </div>
+  <?php if ($imageRows): ?>
+    <table id="rent-image-table" class="image-table image-table-3">
+      <thead>
+        <tr>
+          <th>画像</th>
+          <th>並び順</th>
+          <th>削除</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($imageRows as $img): ?>
+          <tr class="draggable-row" draggable="true" data-image-id="<?php echo h((string)$img['id']); ?>">
+            <td><img src="../<?php echo h($img['file_path']); ?>" alt="" style="max-width:120px;"></td>
+            <td><input type="number" name="image_sort[<?php echo h((string)$img['id']); ?>]" value="<?php echo h((string)$img['sort']); ?>"></td>
+            <td><input type="checkbox" name="delete_image[]" value="<?php echo h((string)$img['id']); ?>"></td>
+          </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+    <script>
+      (function () {
+        const table = document.getElementById('rent-image-table');
+        if (!table) return;
+        const tbody = table.querySelector('tbody');
+        let dragRow = null;
+
+        function updateSort() {
+          const rows = tbody.querySelectorAll('.draggable-row');
+          rows.forEach((row, index) => {
+            const input = row.querySelector('input[type="number"]');
+            if (input) {
+              input.value = index + 1;
+            }
+          });
+        }
+
+        tbody.addEventListener('dragstart', (event) => {
+          const row = event.target.closest('.draggable-row');
+          if (!row) return;
+          dragRow = row;
+          event.dataTransfer.effectAllowed = 'move';
+          row.classList.add('dragging');
+        });
+
+        tbody.addEventListener('dragend', () => {
+          if (dragRow) {
+            dragRow.classList.remove('dragging');
+            dragRow = null;
+          }
+          updateSort();
+        });
+
+        tbody.addEventListener('dragover', (event) => {
+          event.preventDefault();
+          const row = event.target.closest('.draggable-row');
+          if (!row || row === dragRow) return;
+          const rect = row.getBoundingClientRect();
+          const next = (event.clientY - rect.top) > rect.height / 2;
+          tbody.insertBefore(dragRow, next ? row.nextSibling : row);
+        });
+      })();
+    </script>
+  <?php else: ?>
+    <p>画像は未登録です。</p>
+  <?php endif; ?>
+  <hr>
+  <?php endif; ?>
+  <div class="field-grid">
   <div>
     <label>公開状態
       <select name="status">
@@ -230,7 +337,9 @@ try {
   </div>
   <div><label>キャッチコピー <input type="text" name="catchCopy" value="<?php echo h((string)$values['catchCopy']); ?>"></label></div>
   <div><label>備考（短文） <input type="text" name="notes" value="<?php echo h((string)$values['notes']); ?>"></label></div>
-  <div><label>所在地 <input type="text" name="location" value="<?php echo h((string)$values['location']); ?>"></label></div>
+  <div><label>所在地 <input type="text" id="rent-location" name="location" value="<?php echo h((string)$values['location']); ?>"></label></div>
+  <div><label>緯度 <input type="text" id="rent-lat" name="lat" value="<?php echo h((string)$values['lat']); ?>"></label></div>
+  <div><label>経度 <input type="text" id="rent-lng" name="lng" value="<?php echo h((string)$values['lng']); ?>"></label></div>
   <div><label><span class="label-title">賃料 <span class="req">※</span></span><input type="text" name="price" value="<?php echo h((string)$values['price']); ?>" required></label></div>
   <div><label>敷金 <input type="text" name="deposit_fee" value="<?php echo h((string)$values['deposit_fee']); ?>"></label></div>
   <div><label>礼金 <input type="text" name="key_money" value="<?php echo h((string)$values['key_money']); ?>"></label></div>
@@ -381,87 +490,51 @@ try {
   <div><label>教育施設 <input type="text" name="schools" value="<?php echo h((string)$values['schools']); ?>"></label></div>
   <div><label>医療機関 <input type="text" name="hospitals" value="<?php echo h((string)$values['hospitals']); ?>"></label></div>
   <div><label>公共施設 <input type="text" name="public_facilities" value="<?php echo h((string)$values['public_facilities']); ?>"></label></div>
-  <div>
+  <div class="span-2">
     <label>共有部
       <textarea name="shared_spaces" rows="3"><?php echo h((string)$values['shared_spaces']); ?></textarea>
     </label>
   </div>
   <div><label>その他 <input type="text" name="sonota" value="<?php echo h((string)$values['sonota']); ?>"></label></div>
   <div><label>並び順 <input type="number" name="sort" value="<?php echo h((string)$values['sort']); ?>"></label></div>
-  <div>
+  <div class="span-2">
     <button type="submit">保存</button>
   </div>
-
-  <?php if ($id): ?>
-  <hr>
-  <div>
-    <label>画像追加 <input type="file" name="images[]" multiple></label>
   </div>
-  <?php if ($imageRows): ?>
-    <table id="rent-image-table">
-      <thead>
-        <tr>
-          <th>画像</th>
-          <th>並び順</th>
-          <th>削除</th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php foreach ($imageRows as $img): ?>
-          <tr class="draggable-row" draggable="true" data-image-id="<?php echo h((string)$img['id']); ?>">
-            <td><img src="../<?php echo h($img['file_path']); ?>" alt="" style="max-width:120px;"></td>
-            <td><input type="number" name="image_sort[<?php echo h((string)$img['id']); ?>]" value="<?php echo h((string)$img['sort']); ?>"></td>
-            <td><input type="checkbox" name="delete_image[]" value="<?php echo h((string)$img['id']); ?>"></td>
-          </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
-    <script>
-      (function () {
-        const table = document.getElementById('rent-image-table');
-        if (!table) return;
-        const tbody = table.querySelector('tbody');
-        let dragRow = null;
 
-        function updateSort() {
-          const rows = tbody.querySelectorAll('.draggable-row');
-          rows.forEach((row, index) => {
-            const input = row.querySelector('input[type="number"]');
-            if (input) {
-              input.value = index + 1;
-            }
-          });
-        }
-
-        tbody.addEventListener('dragstart', (event) => {
-          const row = event.target.closest('.draggable-row');
-          if (!row) return;
-          dragRow = row;
-          event.dataTransfer.effectAllowed = 'move';
-          row.classList.add('dragging');
-        });
-
-        tbody.addEventListener('dragend', () => {
-          if (dragRow) {
-            dragRow.classList.remove('dragging');
-            dragRow = null;
-          }
-          updateSort();
-        });
-
-        tbody.addEventListener('dragover', (event) => {
-          event.preventDefault();
-          const row = event.target.closest('.draggable-row');
-          if (!row || row === dragRow) return;
-          const rect = row.getBoundingClientRect();
-          const next = (event.clientY - rect.top) > rect.height / 2;
-          tbody.insertBefore(dragRow, next ? row.nextSibling : row);
-        });
-      })();
-    </script>
-  <?php else: ?>
-    <p>画像は未登録です。</p>
-  <?php endif; ?>
-  <?php endif; ?>
 </form>
+
+<?php if ($mapsApiKey !== ''): ?>
+  <script src="https://maps.googleapis.com/maps/api/js?key=<?php echo h($mapsApiKey); ?>"></script>
+  <script>
+    (function () {
+      var locationInput = document.getElementById('rent-location');
+      var latInput = document.getElementById('rent-lat');
+      var lngInput = document.getElementById('rent-lng');
+      if (!locationInput || !latInput || !lngInput || !window.google || !google.maps) {
+        return;
+      }
+      var geocoder = new google.maps.Geocoder();
+      var lastQuery = '';
+
+      function geocodeAddress() {
+        var address = locationInput.value.trim();
+        if (!address || address === lastQuery) {
+          return;
+        }
+        lastQuery = address;
+        geocoder.geocode({ address: address }, function (results, status) {
+          if (status !== 'OK' || !results || !results[0]) {
+            return;
+          }
+          var loc = results[0].geometry.location;
+          latInput.value = loc.lat().toFixed(7);
+          lngInput.value = loc.lng().toFixed(7);
+        });
+      }
+
+      locationInput.addEventListener('blur', geocodeAddress);
+    })();
+  </script>
+<?php endif; ?>
 

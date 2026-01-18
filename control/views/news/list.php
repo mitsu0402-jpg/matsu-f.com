@@ -19,34 +19,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'delete') {
             $deleteId = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
             if ($deleteId) {
-                $stmt = $pdo->prepare('DELETE FROM areas WHERE id = :id');
+                $stmt = $pdo->prepare('DELETE FROM notices WHERE id = :id');
                 $stmt->execute(['id' => $deleteId]);
                 $message = '削除しました。';
             }
         } else {
             $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
-            $name = trim((string)($_POST['name'] ?? ''));
-            $sort = (int)($_POST['sort'] ?? 0);
+            $title = trim((string)($_POST['title'] ?? ''));
+            $body = trim((string)($_POST['body'] ?? ''));
+            $linkUrl = '';
+            $publishedAt = '';
+            $sort = 0;
             $status = (int)($_POST['status'] ?? 1);
 
-            if ($name === '') {
-                $error = '名称を入力してください。';
+            if ($title === '' || $body === '') {
+                $error = 'タイトルと本文を入力してください。';
             } else {
                 if ($id) {
-                    $stmt = $pdo->prepare('UPDATE areas SET name = :name, sort = :sort, status = :status WHERE id = :id');
+                    $stmt = $pdo->prepare('UPDATE notices SET title = :title, body = :body, status = :status, updated_at = NOW() WHERE id = :id');
                     $stmt->execute([
-                        'name' => $name,
-                        'sort' => $sort,
+                        'title' => $title,
+                        'body' => $body,
                         'status' => $status,
                         'id' => $id,
                     ]);
                     $message = '更新しました。';
                     $editId = $id;
                 } else {
-                    $stmt = $pdo->prepare('INSERT INTO areas (name, sort, status) VALUES (:name, :sort, :status)');
+                    $stmt = $pdo->prepare('INSERT INTO notices (title, body, status, created_at, updated_at) VALUES (:title, :body, :status, NOW(), NOW())');
                     $stmt->execute([
-                        'name' => $name,
-                        'sort' => $sort,
+                        'title' => $title,
+                        'body' => $body,
                         'status' => $status,
                     ]);
                     $message = '追加しました。';
@@ -66,15 +69,15 @@ try {
     $where = '';
     $params = [];
     if ($q !== '') {
-        $where = 'WHERE name LIKE :q';
+        $where = 'WHERE title LIKE :q OR body LIKE :q';
         $params['q'] = '%' . $q . '%';
     }
-    $stmt = $pdo->prepare("SELECT id, name, sort, status FROM areas $where ORDER BY sort ASC, id ASC");
+    $stmt = $pdo->prepare("SELECT id, title, status, created_at FROM notices $where ORDER BY created_at DESC, id DESC");
     $stmt->execute($params);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     if ($editId) {
-        $stmt = $pdo->prepare('SELECT id, name, sort, status FROM areas WHERE id = :id');
+        $stmt = $pdo->prepare('SELECT id, title, body, status FROM notices WHERE id = :id');
         $stmt->execute(['id' => $editId]);
         $editRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
@@ -82,7 +85,7 @@ try {
     $error = 'エラーが発生しました。' . $e->getMessage();
 }
 
-$editRow = $editRow ?? ['id' => '', 'name' => '', 'sort' => 0, 'status' => 1];
+$editRow = $editRow ?? ['id' => '', 'title' => '', 'body' => '', 'status' => 1];
 $isEditing = $editRow['id'] !== '';
 ?>
 
@@ -94,16 +97,20 @@ $isEditing = $editRow['id'] !== '';
 <?php endif; ?>
 
 <section>
-  <form method="post" action="index.php?page=area_list">
+  <form method="post" action="index.php?page=news_list">
     <input type="hidden" name="id" value="<?php echo h((string)$editRow['id']); ?>">
     <div>
-      <label>エリア<?php if ($isEditing): ?>編集<?php else: ?>追加<?php endif; ?></label>
+      <label>お知らせ<?php if ($isEditing): ?>編集<?php else: ?>追加<?php endif; ?></label>
     </div>
     <div>
-      <label>名称 <input type="text" name="name" value="<?php echo h((string)$editRow['name']); ?>" required></label>
+      <label>タイトル <span class="req">※</span>
+        <input type="text" name="title" value="<?php echo h((string)$editRow['title']); ?>" required>
+      </label>
     </div>
     <div>
-      <label>並び順 <input type="number" name="sort" value="<?php echo h((string)$editRow['sort']); ?>"></label>
+      <label>本文 <span class="req">※</span>
+        <textarea name="body" rows="4" required><?php echo h((string)$editRow['body']); ?></textarea>
+      </label>
     </div>
     <div>
       <label>公開状態
@@ -116,7 +123,7 @@ $isEditing = $editRow['id'] !== '';
     <div>
       <button type="submit" name="action" value="save"><?php echo $isEditing ? '更新' : '追加'; ?></button>
       <?php if ($isEditing): ?>
-        <a href="index.php?page=area_list">クリア</a>
+        <a href="index.php?page=news_list">クリア</a>
       <?php endif; ?>
     </div>
   </form>
@@ -124,9 +131,9 @@ $isEditing = $editRow['id'] !== '';
 
 <section>
   <form method="get" action="index.php">
-    <input type="hidden" name="page" value="area_list">
+    <input type="hidden" name="page" value="news_list">
     <label>
-      名称
+      検索
       <input type="text" name="q" value="<?php echo h($q); ?>">
     </label>
     <button type="submit">検索</button>
@@ -139,8 +146,8 @@ $isEditing = $editRow['id'] !== '';
     <thead>
       <tr>
         <th>ID</th>
-        <th>名称</th>
-        <th>並び順</th>
+        <th>タイトル</th>
+        <th>登録日時</th>
         <th>公開状態</th>
         <th>操作</th>
       </tr>
@@ -152,12 +159,12 @@ $isEditing = $editRow['id'] !== '';
         <?php foreach ($rows as $row): ?>
           <tr>
             <td><?php echo h((string)$row['id']); ?></td>
-            <td><?php echo h((string)$row['name']); ?></td>
-            <td><?php echo h((string)$row['sort']); ?></td>
+            <td><?php echo h((string)$row['title']); ?></td>
+            <td><?php echo h((string)$row['created_at']); ?></td>
             <td><?php echo ((int)$row['status'] === 1) ? '公開' : '下書き'; ?></td>
             <td>
-              <a href="index.php?page=area_list&edit_id=<?php echo h((string)$row['id']); ?>">編集</a>
-              <form method="post" action="index.php?page=area_list" style="display:inline;">
+              <a href="index.php?page=news_list&edit_id=<?php echo h((string)$row['id']); ?>">編集</a>
+              <form method="post" action="index.php?page=news_list" style="display:inline;">
                 <input type="hidden" name="id" value="<?php echo h((string)$row['id']); ?>">
                 <button type="submit" name="action" value="delete" onclick="return confirm('削除しますか？');">削除</button>
               </form>
