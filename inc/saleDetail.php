@@ -433,10 +433,10 @@ $optionalItems = array_filter($optionalItems, function ($value) {
                 </div>
                 <div class="info-card">
                     <div>
-                        <div class="info-title">物件名：<?php echo h((string)$row['name']); ?></div>
                         <?php if ($catchCopy !== ''): ?>
                             <div class="catch-copy"><?php echo h($catchCopy); ?></div>
                         <?php endif; ?>
+                        <div class="info-title">物件名：<?php echo h((string)$row['name']); ?></div>
                         <?php if ($displayLocation !== ''): ?>
                             <div class="info-row">
                                 <div class="info-label">所在地：</div>
@@ -460,16 +460,16 @@ $optionalItems = array_filter($optionalItems, function ($value) {
                 </div>
             </div>
         </section>
-        <?php if ($mapsApiKey !== '' && !empty($row['lat']) && !empty($row['lng'])): ?>
-            <section class="map-section">
-                <h2 class="map-title">物件マップ</h2>
-                <div id="sale-map" class="map-canvas"></div>
-            </section>
-        <?php endif; ?>
         <?php if ($description !== ''): ?>
             <section class="desc-section">
                 <h2 class="desc-title">物件説明</h2>
                 <div class="desc-body"><?php echo h($description); ?></div>
+            </section>
+        <?php endif; ?>
+        <?php if ($mapsApiKey !== '' && !empty($row['lat']) && !empty($row['lng'])): ?>
+            <section class="map-section">
+                <h2 class="map-title">物件マップ</h2>
+                <div id="sale-map" class="map-canvas"></div>
             </section>
         <?php endif; ?>
         <?php if ($optionalItems): ?>
@@ -635,5 +635,15 @@ $optionalItems = array_filter($optionalItems, function ($value) {
     })();
 </script>
 <?php endif; ?>
+<script>
+    (function () {
+        function sendHeight() {
+            var height = document.documentElement.scrollHeight || document.body.scrollHeight;
+            parent.postMessage({ type: 'matsu-sale-height', height: height }, 'https://matsu-f.com');
+        }
+        window.addEventListener('load', sendHeight);
+        window.addEventListener('resize', sendHeight);
+    })();
+</script>
 </body>
 </html>

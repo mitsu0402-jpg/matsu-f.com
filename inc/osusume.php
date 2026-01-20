@@ -37,7 +37,7 @@ try {
     <meta charset="UTF-8">
     <style>
         :root {
-            --card-size: 240px;
+            --card-size: 25%;
             --card-radius: 12px;
             --card-gap: 16px;
             --card-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
@@ -185,6 +185,16 @@ try {
     } else {
         window.addEventListener('load', setupCarousel);
     }
+})();
+</script>
+<script>
+(function () {
+    function sendHeight() {
+        var height = document.documentElement.scrollHeight || document.body.scrollHeight;
+        parent.postMessage({ type: 'matsu-sale-height', height: height }, 'https://matsu-f.com');
+    }
+    window.addEventListener('load', sendHeight);
+    window.addEventListener('resize', sendHeight);
 })();
 </script>
 </body>
