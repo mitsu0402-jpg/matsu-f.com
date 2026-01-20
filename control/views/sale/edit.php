@@ -70,6 +70,7 @@ $fields = [
     'school_district',
     'sonota',
     'notes',
+    'setsumei',
     'sort',
     'osusume',
 ];
@@ -347,7 +348,7 @@ try {
       </select>
     </label>
   </div>
-  <div><label>キャッチコピー <input type="text" name="catchCopy" value="<?php echo h((string)$values['catchCopy']); ?>"></label></div>
+  <div><label>キャッチコピー（20文字程度短めで） <input type="text" name="catchCopy" value="<?php echo h((string)$values['catchCopy']); ?>"></label></div>
   <div><label>所在地 <input type="text" id="sale-location" name="location" value="<?php echo h((string)$values['location']); ?>"></label></div>
   <div><label>緯度 <input type="text" id="sale-lat" name="lat" value="<?php echo h((string)$values['lat']); ?>"></label></div>
   <div><label>経度 <input type="text" id="sale-lng" name="lng" value="<?php echo h((string)$values['lng']); ?>"></label></div>
@@ -590,6 +591,11 @@ try {
   </div>
   <div><label>学校区 <input type="text" name="school_district" value="<?php echo h((string)$values['school_district']); ?>"></label></div>
   <div><label>その他 <input type="text" name="sonota" value="<?php echo h((string)$values['sonota']); ?>"></label></div>
+  <div class="span-2">
+    <label>説明
+      <textarea name="setsumei" rows="4"><?php echo h((string)$values['setsumei']); ?></textarea>
+    </label>
+  </div>
   <div class="span-2">
     <label>備考
       <textarea name="notes" rows="4"><?php echo h((string)$values['notes']); ?></textarea>

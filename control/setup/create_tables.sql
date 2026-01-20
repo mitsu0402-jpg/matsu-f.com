@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS `sale_properties` (
   `year_built` VARCHAR(10) NULL,
   `交通` VARCHAR(255) NULL,
   `説明` TEXT NULL,
+  `setsumei` TEXT NULL,
   `公開状態` TINYINT NOT NULL DEFAULT 1,
   `created_at` 日付TIME NOT NULL DEFAULT CUR賃料_TIMESTAMP,
   `up日付d_at` 日付TIME NOT NULL DEFAULT CUR賃料_TIMESTAMP ON UP日付 CUR賃料_TIMESTAMP,
