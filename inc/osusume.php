@@ -1,4 +1,6 @@
 <?php
+header('Content-Type: text/html; charset=UTF-8');
+
 require_once __DIR__ . '/../control/lib/db.php';
 
 function h(string $value): string
@@ -26,12 +28,12 @@ try {
     $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
-    $error = 'エラーが発生しました。' . $e->getMessage();
+    $error = 'エラーが発生しました：' . $e->getMessage();
 }
 ?>
 <!doctype html>
 <html lang="ja">
-    <head>
+<head>
     <meta charset="UTF-8">
     <style>
         :root {
@@ -116,75 +118,74 @@ try {
             }
         }
     </style>
-    </head>
+</head>
 
-
-    <body>
-    <?php if ($error): ?>
-        <p><?php echo h($error); ?></p>
-    <?php elseif (!$rows): ?>
-        <p>おすすめ物件がありません。</p>
-    <?php else: ?>
-        <h2 class="osusume-title">おススメ物件</h2>
-        <div class="osusume-carousel" id="osusume-carousel">
-            <div class="osusume-track">
-            <?php foreach ($rows as $row): ?>
-                <?php
-                    $imagePath = trim((string)($row['image_path'] ?? ''));
-                    $imageUrl = $imagePath !== '' ? '/control/' . ltrim($imagePath, '/') : '';
-                    $style = $imageUrl !== '' ? "background-image: url('" . h($imageUrl) . "');" : '';
-                ?>
-                <article class="osusume-card">
-                    <div class="osusume-image" style="<?php echo $style; ?>"></div>
-                    <div class="osusume-body">
-                        <div class="osusume-name"><?php echo h((string)$row['name']); ?></div>
-                        <div class="osusume-price"><?php echo number_format((int)$row['price']); ?> 万円</div>
-                        <div class="osusume-location"><?php echo h((string)$row['location']); ?></div>
-                    </div>
-                </article>
-            <?php endforeach; ?>
-            </div>
+<body>
+<?php if ($error): ?>
+    <p><?php echo h($error); ?></p>
+<?php elseif (!$rows): ?>
+    <p>該当する物件がありません。</p>
+<?php else: ?>
+    <h2 class="osusume-title">おすすめ物件</h2>
+    <div class="osusume-carousel" id="osusume-carousel">
+        <div class="osusume-track">
+        <?php foreach ($rows as $row): ?>
+            <?php
+                $imagePath = trim((string)($row['image_path'] ?? ''));
+                $imageUrl = $imagePath !== '' ? '/control/' . ltrim($imagePath, '/') : '';
+                $style = $imageUrl !== '' ? "background-image: url('" . h($imageUrl) . "');" : '';
+            ?>
+            <article class="osusume-card">
+                <div class="osusume-image" style="<?php echo $style; ?>"></div>
+                <div class="osusume-body">
+                    <div class="osusume-name"><?php echo h((string)$row['name']); ?></div>
+                    <div class="osusume-location"><?php echo h((string)$row['location']); ?></div>
+                    <div class="osusume-price"><?php echo number_format((int)$row['price']); ?> 円</div>
+                </div>
+            </article>
+        <?php endforeach; ?>
         </div>
-    <?php endif; ?>
-    <script>
-        (function () {
-            function setupCarousel() {
-                var carousel = document.getElementById('osusume-carousel');
-                if (!carousel) {
-                    return;
-                }
-                var track = carousel.querySelector('.osusume-track');
-                var cards = carousel.querySelectorAll('.osusume-card');
-                if (!track || cards.length < 2) {
-                    return;
-                }
-                var gapValue = getComputedStyle(track).gap || '0';
-                var gap = parseFloat(gapValue) || 0;
-                var step = cards[0].getBoundingClientRect().width + gap;
-                if (!step) {
-                    return;
-                }
+    </div>
+<?php endif; ?>
+
+<script>
+(function () {
+    function setupCarousel() {
+        var carousel = document.getElementById('osusume-carousel');
+        if (!carousel) return;
+
+        var track = carousel.querySelector('.osusume-track');
+        var cards = carousel.querySelectorAll('.osusume-card');
+        if (!track || cards.length < 2) return;
+
+        var gapValue = getComputedStyle(track).gap || '0';
+        var gap = parseFloat(gapValue) || 0;
+        var step = cards[0].getBoundingClientRect().width + gap;
+        if (!step) return;
+
+        track.style.transition = 'transform 700ms ease';
+        var index = 0;
+        var intervalMs = 4500;
+
+        setInterval(function () {
+            index = (index + 1) % cards.length;
+            if (index === 0) {
+                track.style.transition = 'none';
+                track.style.transform = 'translateX(0)';
+                track.offsetHeight;
                 track.style.transition = 'transform 700ms ease';
-                var index = 0;
-                var intervalMs = 4500;
-                setInterval(function () {
-                    index = (index + 1) % cards.length;
-                    if (index === 0) {
-                        track.style.transition = 'none';
-                        track.style.transform = 'translateX(0)';
-                        track.offsetHeight;
-                        track.style.transition = 'transform 700ms ease';
-                        return;
-                    }
-                    track.style.transform = 'translateX(' + (-step * index) + 'px)';
-                }, intervalMs);
+                return;
             }
-            if (document.readyState === 'complete') {
-                setupCarousel();
-            } else {
-                window.addEventListener('load', setupCarousel);
-            }
-        })();
-    </script>
-    </body>
+            track.style.transform = 'translateX(' + (-step * index) + 'px)';
+        }, intervalMs);
+    }
+
+    if (document.readyState === 'complete') {
+        setupCarousel();
+    } else {
+        window.addEventListener('load', setupCarousel);
+    }
+})();
+</script>
+</body>
 </html>
