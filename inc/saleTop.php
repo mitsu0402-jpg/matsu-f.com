@@ -11,6 +11,36 @@ $error = '';
 
 try {
     $pdo = getPDO();
+    try {
+        $referrer = (string)($_SERVER['HTTP_REFERER'] ?? '');
+        $pagePath = '';
+        if ($referrer !== '') {
+            $parts = parse_url($referrer);
+            if (!empty($parts['path'])) {
+                $pagePath = $parts['path'];
+                if (!empty($parts['query'])) {
+                    $pagePath .= '?' . $parts['query'];
+                }
+            }
+        }
+        if ($pagePath === '') {
+            $pagePath = '/index.php';
+        }
+
+        $logStmt = $pdo->prepare('INSERT INTO page_views_log (page_path, page_title, ip, referrer, user_agent, property_type, property_id, created_at)
+            VALUES (:page_path, :page_title, :ip, :referrer, :user_agent, :property_type, :property_id, NOW())');
+        $logStmt->execute([
+            ':page_path' => $pagePath,
+            ':page_title' => 'トップページ',
+            ':ip' => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+            ':referrer' => $referrer,
+            ':user_agent' => (string)($_SERVER['HTTP_USER_AGENT'] ?? ''),
+            ':property_type' => 'index',
+            ':property_id' => 0,
+        ]);
+    } catch (Throwable $e) {
+        // Ignore logging errors to avoid breaking page rendering.
+    }
     $sql = 'SELECT id, name, price, location, sort,
         (SELECT file_path
          FROM property_images

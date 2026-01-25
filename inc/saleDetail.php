@@ -57,6 +57,22 @@ try {
     $imgStmt = $pdo->prepare("SELECT file_path FROM property_images WHERE property_type = 'sale' AND status = 1 AND property_id = :id ORDER BY sort ASC, id ASC");
     $imgStmt->execute(['id' => $id]);
     $images = $imgStmt->fetchAll(PDO::FETCH_COLUMN);
+
+    try {
+        $logStmt = $pdo->prepare('INSERT INTO page_views_log (page_path, page_title, ip, referrer, user_agent, property_type, property_id, created_at)
+            VALUES (:page_path, :page_title, :ip, :referrer, :user_agent, :property_type, :property_id, NOW())');
+        $logStmt->execute([
+            ':page_path' => (string)($_SERVER['REQUEST_URI'] ?? ''),
+            ':page_title' => (string)($row['name'] ?? ''),
+            ':ip' => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+            ':referrer' => (string)($_SERVER['HTTP_REFERER'] ?? ''),
+            ':user_agent' => (string)($_SERVER['HTTP_USER_AGENT'] ?? ''),
+            ':property_type' => 'sale',
+            ':property_id' => $id,
+        ]);
+    } catch (Throwable $e) {
+        // Ignore logging errors to avoid breaking page rendering.
+    }
 } catch (Throwable $e) {
     $error = 'Error: ' . $e->getMessage();
 }
@@ -120,7 +136,11 @@ $optionalItems = array_filter($optionalItems, function ($value) {
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title><?php echo h((string)($row['name'] ?? 'Sale detail')); ?></title>
+    <?php
+    $pageName = trim((string)($row['name'] ?? ''));
+    $pageTitle = $pageName !== '' ? $pageName . '　売り物件詳細　松永不動産' : '売り物件詳細　松永不動産';
+    ?>
+    <title><?php echo h($pageTitle); ?></title>
     <style>
         :root {
             --accent: #d7665b;
@@ -143,7 +163,7 @@ $optionalItems = array_filter($optionalItems, function ($value) {
 
         .detail-shell {
             max-width: 1000px;
-            margin: 24px auto;
+            margin: 0 auto;
             display: grid;
             gap: 16px;
             padding: 0 16px 40px;
@@ -160,6 +180,14 @@ $optionalItems = array_filter($optionalItems, function ($value) {
 
         .hero-wrap {
             position: relative;
+        }
+
+        .hero-title {
+            margin: 0 0 10px;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: #1b1b1b;
         }
 
         .hero-arrow {
@@ -200,6 +228,27 @@ $optionalItems = array_filter($optionalItems, function ($value) {
             color: #ffffff;
             font-size: 12px;
             letter-spacing: 0.04em;
+        }
+
+        .like-button {
+            align-self: flex-end;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: none;
+            background: rgba(255, 255, 255, 0.92);
+            color: #7a4b2a;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.18);
+        }
+
+        .like-button.is-disabled {
+            opacity: 0.6;
+            cursor: default;
         }
 
         .detail-panel {
@@ -394,6 +443,20 @@ $optionalItems = array_filter($optionalItems, function ($value) {
         $heroUrl = $imageUrls[0] ?? '';
         $heroStyle = $heroUrl !== '' ? "background-image: url('" . h($heroUrl) . "');" : '';
         ?>
+        <div class="hero-title"><?php echo h((string)($row['name'] ?? '')); ?></div>
+        <?php $likePagePath = '/saledetail/?id=' . urlencode((string)$id); ?>
+        <div style="display:flex; justify-content:flex-end; margin: 0 0 8px;">
+            <button
+                class="like-button"
+                id="sale-like-btn"
+                type="button"
+                data-type="sale"
+                data-id="<?php echo h((string)$id); ?>"
+                data-path="<?php echo h($likePagePath); ?>"
+                aria-label="いいね">
+                いいね！ <span id="sale-like-count">0</span>
+            </button>
+        </div>
         <div class="hero-wrap">
             <div class="image-hero" id="sale-hero" style="<?php echo $heroStyle; ?>"></div>
             <button class="hero-arrow left" id="sale-prev" type="button" aria-label="Previous image">&lsaquo;</button>
@@ -635,6 +698,55 @@ $optionalItems = array_filter($optionalItems, function ($value) {
     })();
 </script>
 <?php endif; ?>
+
+<script>
+    (function () {
+        var btn = document.getElementById('sale-like-btn');
+        var countEl = document.getElementById('sale-like-count');
+        if (!btn || !countEl) {
+            return;
+        }
+        var payload = new URLSearchParams({
+            content_type: btn.getAttribute('data-type') || '',
+            content_id: btn.getAttribute('data-id') || '0',
+            page_path: btn.getAttribute('data-path') || ''
+        });
+
+        function updateCount() {
+            fetch('/api/like.php?' + payload.toString())
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data && typeof data.count === 'number') {
+                        countEl.textContent = String(data.count);
+                    }
+                })
+                .catch(function () {});
+        }
+
+        btn.addEventListener('click', function () {
+            if (btn.classList.contains('is-disabled')) {
+                return;
+            }
+            fetch('/api/like.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                body: payload.toString()
+            })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data && typeof data.count === 'number') {
+                        countEl.textContent = String(data.count);
+                    }
+                    if (data && data.liked === false) {
+                        btn.classList.add('is-disabled');
+                    }
+                })
+                .catch(function () {});
+        });
+
+        updateCount();
+    })();
+</script>
 <script>
     (function () {
         var params = new URLSearchParams(window.location.search);
@@ -657,12 +769,35 @@ $optionalItems = array_filter($optionalItems, function ($value) {
 </script>
 <script>
     (function () {
+        function getContentHeight() {
+            var body = document.body;
+            var doc = document.documentElement;
+            if (!body || !doc) {
+                return 0;
+            }
+            var bodyHeight = Math.ceil(body.getBoundingClientRect().height);
+            var docHeight = Math.ceil(doc.getBoundingClientRect().height);
+            var offsetHeight = Math.max(body.offsetHeight, doc.offsetHeight);
+            return Math.max(bodyHeight, docHeight, offsetHeight);
+        }
+
         function sendHeight() {
-            var height = document.documentElement.scrollHeight || document.body.scrollHeight;
+            var height = getContentHeight();
+            if (!height) {
+                return;
+            }
+            parent.postMessage({ type: 'matsu-sale-detail-height', height: height }, 'https://matsu-f.com');
             parent.postMessage({ type: 'matsu-sale-height', height: height }, 'https://matsu-f.com');
         }
+
+        window.addEventListener('DOMContentLoaded', sendHeight);
         window.addEventListener('load', sendHeight);
         window.addEventListener('resize', sendHeight);
+        if (window.ResizeObserver) {
+            new ResizeObserver(sendHeight).observe(document.body);
+        }
+        setTimeout(sendHeight, 300);
+        setTimeout(sendHeight, 1000);
     })();
 </script>
 </body>

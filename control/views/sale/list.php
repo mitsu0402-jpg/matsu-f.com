@@ -15,6 +15,34 @@ $error = '';
 
 try {
     $pdo = getPDO();
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reorder') {
+        $order = $_POST['order'] ?? [];
+        if (!is_array($order)) {
+            $order = [];
+        }
+        $ids = array_values(array_filter(array_map('intval', $order), function ($value) {
+            return $value > 0;
+        }));
+
+        $response = ['ok' => false];
+        if ($ids) {
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare('UPDATE sale_properties SET sort = :sort WHERE id = :id');
+            foreach ($ids as $index => $id) {
+                $stmt->execute([
+                    ':sort' => $index + 1,
+                    ':id' => $id,
+                ]);
+            }
+            $pdo->commit();
+            $response['ok'] = true;
+        }
+
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode($response, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     $where = [];
     $params = [];
 
@@ -31,11 +59,11 @@ try {
         $params['status'] = (int)$status;
     }
 
-    $sql = 'SELECT id, name, cate, price, location, status, lastUpdateDate FROM `sale_properties`';
+    $sql = 'SELECT id, name, cate, price, location, status, lastUpdateDate, sort FROM `sale_properties`';
     if ($where) {
         $sql .= ' WHERE ' . implode(' AND ', $where);
     }
-    $sql .= ' ORDER BY lastUpdateDate DESC, id DESC LIMIT 100';
+    $sql .= ' ORDER BY sort ASC, id ASC LIMIT 100';
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -44,6 +72,12 @@ try {
     $error = 'エラーが発生しました。' . $e->getMessage();
 }
 ?>
+
+<style>
+  .draggable-row { cursor: move; }
+  .drag-handle { cursor: grab; color: #5f6b62; font-weight: 700; }
+  .drag-handle:active { cursor: grabbing; }
+</style>
 
 <section>
   <form method="get" action="index.php">
@@ -71,6 +105,7 @@ try {
     <thead>
       <tr>
         <th>ID</th>
+        <th>並び替え</th>
         <th>物件名</th>
         <th>種別</th>
         <th>価格</th>
@@ -82,11 +117,12 @@ try {
     </thead>
     <tbody>
       <?php if (!$rows): ?>
-        <tr><td colspan="8">データがありません。</td></tr>
+        <tr><td colspan="9">データがありません。</td></tr>
       <?php else: ?>
         <?php foreach ($rows as $row): ?>
-          <tr>
+          <tr class="draggable-row" draggable="true" data-id="<?php echo h((string)$row['id']); ?>">
             <td><?php echo h((string)$row['id']); ?></td>
+            <td class="drag-handle" aria-label="ドラッグして並び替え">≡</td>
             <td><?php echo h((string)$row['name']); ?></td>
             <td><?php echo h((string)$row['cate']); ?></td>
             <td><?php echo h((string)$row['price']); ?></td>
@@ -101,4 +137,67 @@ try {
   </table>
   </div>
 </section>
+
+<script>
+  (function () {
+    var tbody = document.querySelector('table tbody');
+    if (!tbody) return;
+    var draggingRow = null;
+
+    function getDragAfterElement(container, y) {
+      var rows = Array.prototype.slice.call(container.querySelectorAll('tr.draggable-row:not(.dragging)'));
+      var closest = { offset: Number.NEGATIVE_INFINITY, element: null };
+      rows.forEach(function (row) {
+        var box = row.getBoundingClientRect();
+        var offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+          closest = { offset: offset, element: row };
+        }
+      });
+      return closest.element;
+    }
+
+    function sendOrder() {
+      var order = Array.prototype.slice.call(tbody.querySelectorAll('tr.draggable-row'))
+        .map(function (row) { return row.getAttribute('data-id'); })
+        .filter(Boolean);
+      if (!order.length) return;
+      var formData = new FormData();
+      formData.append('action', 'reorder');
+      order.forEach(function (id) { formData.append('order[]', id); });
+
+      fetch('index.php?page=sale_list', {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin'
+      }).catch(function () {});
+    }
+
+    tbody.addEventListener('dragstart', function (event) {
+      var row = event.target.closest('tr.draggable-row');
+      if (!row) return;
+      draggingRow = row;
+      row.classList.add('dragging');
+      event.dataTransfer.effectAllowed = 'move';
+    });
+
+    tbody.addEventListener('dragend', function () {
+      if (!draggingRow) return;
+      draggingRow.classList.remove('dragging');
+      draggingRow = null;
+      sendOrder();
+    });
+
+    tbody.addEventListener('dragover', function (event) {
+      event.preventDefault();
+      var afterElement = getDragAfterElement(tbody, event.clientY);
+      if (!draggingRow) return;
+      if (afterElement == null) {
+        tbody.appendChild(draggingRow);
+      } else {
+        tbody.insertBefore(draggingRow, afterElement);
+      }
+    });
+  })();
+</script>
 

@@ -498,7 +498,7 @@ try {
   <div><label>その他 <input type="text" name="sonota" value="<?php echo h((string)$values['sonota']); ?>"></label></div>
   <div><label>並び順 <input type="number" name="sort" value="<?php echo h((string)$values['sort']); ?>"></label></div>
   <div class="span-2">
-    <button type="submit">保存</button>
+    <button type="submit" class="sticky-save">保存</button>
   </div>
   </div>
 

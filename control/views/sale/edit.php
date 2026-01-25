@@ -349,9 +349,10 @@ try {
     </label>
   </div>
   <div><label>キャッチコピー（20文字程度短めで） <input type="text" name="catchCopy" value="<?php echo h((string)$values['catchCopy']); ?>"></label></div>
+  <?php $isNew = !$id; ?>
   <div><label>所在地 <input type="text" id="sale-location" name="location" value="<?php echo h((string)$values['location']); ?>"></label></div>
-  <div><label>緯度 <input type="text" id="sale-lat" name="lat" value="<?php echo h((string)$values['lat']); ?>"></label></div>
-  <div><label>経度 <input type="text" id="sale-lng" name="lng" value="<?php echo h((string)$values['lng']); ?>"></label></div>
+  <div><label>緯度 <input type="text" id="sale-lat" name="lat" value="<?php echo h((string)$values['lat']); ?>" placeholder="自動で入力" <?php echo $isNew ? 'readonly' : ''; ?>></label></div>
+  <div><label>経度 <input type="text" id="sale-lng" name="lng" value="<?php echo h((string)$values['lng']); ?>" placeholder="自動で入力" <?php echo $isNew ? 'readonly' : ''; ?>></label></div>
   <div><label><span class="label-title">価格 <span class="req">※</span></span><input type="text" name="price" value="<?php echo h((string)$values['price']); ?>" required></label></div>
   <div>
     <label>取引態様
@@ -611,7 +612,7 @@ try {
     </label>
   </div>
   <div class="span-2">
-    <button type="submit">保存</button>
+    <button type="submit" class="sticky-save">保存</button>
   </div>
   </div>
 

@@ -44,7 +44,7 @@ try {
 
         body {
             margin: 0;
-            padding: 24px;
+            padding: 5%;
             font-family: "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", serif;
             background: #ffffff;
             color: #1b1b1b;
@@ -90,6 +90,8 @@ try {
             box-shadow: var(--card-shadow);
             margin: 2%;
             transition: transform 200ms ease, box-shadow 200ms ease;
+            text-decoration: none;
+            color: inherit;
         }
 
         .osusume-card.is-hidden {
@@ -137,8 +139,27 @@ try {
         }
 
         @media (max-width: 600px) {
+            :root {
+                --card-gap: 8px;
+            }
+
+            body {
+                padding: 1%;
+            }
+
             .osusume-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .osusume-card {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto;
+                aspect-ratio: auto;
+            }
+
+            .osusume-image {
+                width: 100%;
+                min-height: 120px;
             }
         }
     </style>
@@ -159,10 +180,11 @@ try {
                     $imagePath = trim((string)($row['image_path'] ?? ''));
                     $imageUrl = $imagePath !== '' ? '/control/' . ltrim($imagePath, '/') : '';
                     $style = $imageUrl !== '' ? "background-image: url('" . h($imageUrl) . "');" : '';
+                    $detailUrl = 'https://matsu-f.com/rentdetail/?id=' . urlencode((string)$row['id']);
                     $isHidden = $index >= 20;
                     $index++;
                 ?>
-                <article class="osusume-card<?php echo $isHidden ? ' is-hidden' : ''; ?>">
+                <a class="osusume-card<?php echo $isHidden ? ' is-hidden' : ''; ?>" href="<?php echo h($detailUrl); ?>">
                     <div class="osusume-image" style="<?php echo $style; ?>"></div>
                     <div class="osusume-body">
                         <div class="osusume-name"><?php echo h((string)$row['name']); ?></div>
@@ -170,7 +192,7 @@ try {
                         <div class="osusume-price">家賃月額　<?php echo number_format((int)$row['price']); ?> 円</div>
 
                     </div>
-                </article>
+                </a>
             <?php endforeach; ?>
         </div>
         <?php if ($mapsApiKey !== ''): ?>

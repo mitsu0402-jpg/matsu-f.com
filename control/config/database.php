@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // Database connection settings.
 return [
     'host' => 'mysql321.phy.heteml.lan',

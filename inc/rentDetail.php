@@ -28,7 +28,7 @@ try {
         throw new RuntimeException('物件IDが指定されていません。');
     }
     $pdo = getPDO();
-    $stmt = $pdo->prepare('SELECT * FROM `sale_properties` WHERE `id` = :id AND `status` = 1');
+    $stmt = $pdo->prepare('SELECT * FROM `rent_properties` WHERE `id` = :id AND `status` = 1');
     $stmt->execute(['id' => $id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -36,9 +36,25 @@ try {
         throw new RuntimeException('指定された物件が見つかりません。');
     }
 
-    $imgStmt = $pdo->prepare("SELECT file_path FROM property_images WHERE property_type = 'sale' AND status = 1 AND property_id = :id ORDER BY sort ASC, id ASC");
+    $imgStmt = $pdo->prepare("SELECT file_path FROM property_images WHERE property_type = 'rent' AND status = 1 AND property_id = :id ORDER BY sort ASC, id ASC");
     $imgStmt->execute(['id' => $id]);
     $images = $imgStmt->fetchAll(PDO::FETCH_COLUMN);
+
+    try {
+        $logStmt = $pdo->prepare('INSERT INTO page_views_log (page_path, page_title, ip, referrer, user_agent, property_type, property_id, created_at)
+            VALUES (:page_path, :page_title, :ip, :referrer, :user_agent, :property_type, :property_id, NOW())');
+        $logStmt->execute([
+            ':page_path' => (string)($_SERVER['REQUEST_URI'] ?? ''),
+            ':page_title' => (string)($row['name'] ?? ''),
+            ':ip' => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+            ':referrer' => (string)($_SERVER['HTTP_REFERER'] ?? ''),
+            ':user_agent' => (string)($_SERVER['HTTP_USER_AGENT'] ?? ''),
+            ':property_type' => 'rent',
+            ':property_id' => $id,
+        ]);
+    } catch (Throwable $e) {
+        // Ignore logging errors to avoid breaking page rendering.
+    }
 } catch (Throwable $e) {
     $error = 'エラーが発生しました：' . $e->getMessage();
 }
@@ -50,7 +66,7 @@ $imageUrls = array_values(array_filter(array_map(function ($path) {
 
 $detailItems = [
     '種別' => (string)($row['cate'] ?? ''),
-    '価格' => isset($row['price']) && $row['price'] !== '' ? number_format((int)$row['price']) . ' 円' : '',
+    '家賃' => isset($row['price']) && $row['price'] !== '' ? '月額　' . number_format((int)$row['price']) . '円' : '',
     '所在地' => (string)($row['location'] ?? ''),
     '取引態様' => (string)($row['transaction_type'] ?? ''),
     '間取り' => (string)($row['floor_plan'] ?? ''),
@@ -99,7 +115,11 @@ $detailItems = [
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title><?php echo h((string)($row['name'] ?? '物件詳細')); ?></title>
+    <?php
+    $pageName = trim((string)($row['name'] ?? ''));
+    $pageTitle = $pageName !== '' ? $pageName . '　貸し物件詳細　松永不動産' : '貸し物件詳細　松永不動産';
+    ?>
+    <title><?php echo h($pageTitle); ?></title>
     <style>
         :root {
             --accent: #7a4b2a;
@@ -115,7 +135,7 @@ $detailItems = [
 
         body {
             margin: 0;
-            padding: 24px;
+            padding: 0;
             font-family: "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", serif;
             background: var(--bg);
             color: #1b1b1b;
@@ -126,6 +146,7 @@ $detailItems = [
             margin: 0 auto;
             display: grid;
             gap: 28px;
+            padding: 0 16px 40px;
         }
 
         .detail-header {
@@ -163,6 +184,71 @@ $detailItems = [
             background-size: cover;
             background-position: center;
             background-color: #d9d3cb;
+        }
+
+        .hero-wrap {
+            position: relative;
+        }
+
+        .hero-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.85);
+            color: #3b2f28;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.18);
+        }
+
+        .hero-arrow:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        .hero-arrow.left {
+            left: 12px;
+        }
+
+        .hero-arrow.right {
+            right: 12px;
+        }
+
+        .hero-counter {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.55);
+            color: #ffffff;
+            font-size: 12px;
+            letter-spacing: 0.04em;
+        }
+
+        .like-button {
+            align-self: flex-end;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: none;
+            background: rgba(255, 255, 255, 0.92);
+            color: #7a4b2a;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.18);
+        }
+
+        .like-button.is-disabled {
+            opacity: 0.6;
+            cursor: default;
         }
 
         .image-thumbs {
@@ -264,9 +350,27 @@ $detailItems = [
                 $heroUrl = $imageUrls[0] ?? '';
                 $heroStyle = $heroUrl !== '' ? "background-image: url('" . h($heroUrl) . "');" : '';
                 ?>
-                <div class="image-hero" id="sale-hero" style="<?php echo $heroStyle; ?>"></div>
+                <?php $likePagePath = '/rentdetail/?id=' . urlencode((string)$id); ?>
+                <div style="display:flex; justify-content:flex-end; margin: 0 0 8px;">
+                    <button
+                        class="like-button"
+                        id="rent-like-btn"
+                        type="button"
+                        data-type="rent"
+                        data-id="<?php echo h((string)$id); ?>"
+                        data-path="<?php echo h($likePagePath); ?>"
+                        aria-label="いいね">
+                        いいね！ <span id="rent-like-count">0</span>
+                    </button>
+                </div>
+                <div class="hero-wrap">
+                    <div class="image-hero" id="rent-hero" style="<?php echo $heroStyle; ?>"></div>
+                    <button class="hero-arrow left" id="rent-prev" type="button" aria-label="Previous image">&lsaquo;</button>
+                    <button class="hero-arrow right" id="rent-next" type="button" aria-label="Next image">&rsaquo;</button>
+                    <div class="hero-counter" id="rent-counter"></div>
+                </div>
                 <?php if ($imageUrls): ?>
-                    <div class="image-thumbs" id="sale-thumbs">
+                    <div class="image-thumbs" id="rent-thumbs">
                         <?php foreach ($imageUrls as $index => $url): ?>
                             <div class="image-thumb<?php echo $index === 0 ? ' is-active' : ''; ?>" data-image="<?php echo h($url); ?>">
                                 <img src="<?php echo h($url); ?>" alt="">
@@ -278,7 +382,7 @@ $detailItems = [
 
             <div class="detail-card detail-section">
                 <?php if (!empty($row['price'])): ?>
-                    <div class="price"><?php echo number_format((int)$row['price']); ?> 円</div>
+                    <div class="price">家賃　月額<?php echo number_format((int)$row['price']); ?>円</div>
                 <?php endif; ?>
                 <?php if (!empty($row['location'])): ?>
                     <div><?php echo h((string)$row['location']); ?></div>
@@ -306,14 +410,94 @@ $detailItems = [
     </div>
 <?php endif; ?>
 
+<script>
+    (function () {
+        var btn = document.getElementById('rent-like-btn');
+        var countEl = document.getElementById('rent-like-count');
+        if (!btn || !countEl) {
+            return;
+        }
+        var payload = new URLSearchParams({
+            content_type: btn.getAttribute('data-type') || '',
+            content_id: btn.getAttribute('data-id') || '0',
+            page_path: btn.getAttribute('data-path') || ''
+        });
+
+        function updateCount() {
+            fetch('/api/like.php?' + payload.toString())
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data && typeof data.count === 'number') {
+                        countEl.textContent = String(data.count);
+                    }
+                })
+                .catch(function () {});
+        }
+
+        btn.addEventListener('click', function () {
+            if (btn.classList.contains('is-disabled')) {
+                return;
+            }
+            fetch('/api/like.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                body: payload.toString()
+            })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data && typeof data.count === 'number') {
+                        countEl.textContent = String(data.count);
+                    }
+                    if (data && data.liked === false) {
+                        btn.classList.add('is-disabled');
+                    }
+                })
+                .catch(function () {});
+        });
+
+        updateCount();
+    })();
+</script>
+
 <?php if (!$error && $imageUrls): ?>
 <script>
     (function () {
-        var hero = document.getElementById('sale-hero');
-        var thumbWrap = document.getElementById('sale-thumbs');
-        if (!hero || !thumbWrap) {
+        var hero = document.getElementById('rent-hero');
+        var thumbWrap = document.getElementById('rent-thumbs');
+        var prevBtn = document.getElementById('rent-prev');
+        var nextBtn = document.getElementById('rent-next');
+        var counter = document.getElementById('rent-counter');
+        if (!hero || !thumbWrap || !prevBtn || !nextBtn || !counter) {
             return;
         }
+        var thumbs = Array.prototype.slice.call(thumbWrap.querySelectorAll('.image-thumb[data-image]'));
+        if (!thumbs.length) {
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+            return;
+        }
+        var currentIndex = 0;
+
+        function setActive(index) {
+            var clamped = (index + thumbs.length) % thumbs.length;
+            var target = thumbs[clamped];
+            if (!target) {
+                return;
+            }
+            var url = target.getAttribute('data-image');
+            if (!url) {
+                return;
+            }
+            hero.style.backgroundImage = "url('" + url.replace(/'/g, "\\'") + "')";
+            var active = thumbWrap.querySelector('.image-thumb.is-active');
+            if (active) {
+                active.classList.remove('is-active');
+            }
+            target.classList.add('is-active');
+            currentIndex = clamped;
+            counter.textContent = (clamped + 1) + '/' + thumbs.length;
+        }
+
         thumbWrap.addEventListener('click', function (event) {
             var target = event.target.closest('.image-thumb');
             if (!target) {
@@ -329,7 +513,19 @@ $detailItems = [
                 active.classList.remove('is-active');
             }
             target.classList.add('is-active');
+            currentIndex = thumbs.indexOf(target);
+            counter.textContent = (currentIndex + 1) + '/' + thumbs.length;
         });
+
+        prevBtn.addEventListener('click', function () {
+            setActive(currentIndex - 1);
+        });
+
+        nextBtn.addEventListener('click', function () {
+            setActive(currentIndex + 1);
+        });
+
+        setActive(currentIndex);
     })();
 </script>
 <?php endif; ?>
@@ -379,6 +575,39 @@ $detailItems = [
             headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
             body: body.toString()
         }).catch(function () {});
+    })();
+</script>
+<script>
+    (function () {
+        function getContentHeight() {
+            var body = document.body;
+            var doc = document.documentElement;
+            if (!body || !doc) {
+                return 0;
+            }
+            var bodyHeight = Math.ceil(body.getBoundingClientRect().height);
+            var docHeight = Math.ceil(doc.getBoundingClientRect().height);
+            var offsetHeight = Math.max(body.offsetHeight, doc.offsetHeight);
+            return Math.max(bodyHeight, docHeight, offsetHeight);
+        }
+
+        function sendHeight() {
+            var height = getContentHeight();
+            if (!height) {
+                return;
+            }
+            parent.postMessage({ type: 'matsu-rent-detail-height', height: height }, 'https://matsu-f.com');
+            parent.postMessage({ type: 'matsu-rent-height', height: height }, 'https://matsu-f.com');
+        }
+
+        window.addEventListener('DOMContentLoaded', sendHeight);
+        window.addEventListener('load', sendHeight);
+        window.addEventListener('resize', sendHeight);
+        if (window.ResizeObserver) {
+            new ResizeObserver(sendHeight).observe(document.body);
+        }
+        setTimeout(sendHeight, 300);
+        setTimeout(sendHeight, 1000);
     })();
 </script>
 </body>
