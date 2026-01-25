@@ -140,8 +140,7 @@ try {
     <?php elseif (!$rows): ?>
         <p>現在表示できる物件がありません。</p>
     <?php else: ?>
-        <h2 class="osusume-title"><a class="osusume-title-link" href="https://matsu-f.com/front_page/rentlist/">物件一覧</a></h2>
-        <div class="osusume-grid">
+            <div class="osusume-grid">
             <?php foreach ($rows as $row): ?>
                 <?php
                     $imagePath = trim((string)($row['image_path'] ?? ''));
@@ -162,12 +161,34 @@ try {
     <?php endif; ?>
     <script>
         (function () {
+            function getContentHeight() {
+                var body = document.body;
+                var doc = document.documentElement;
+                if (!body || !doc) {
+                    return 0;
+                }
+                var bodyHeight = Math.ceil(body.getBoundingClientRect().height);
+                var docHeight = Math.ceil(doc.getBoundingClientRect().height);
+                var offsetHeight = Math.max(body.offsetHeight, doc.offsetHeight);
+                return Math.max(bodyHeight, docHeight, offsetHeight);
+            }
+
             function sendHeight() {
-                var height = document.documentElement.scrollHeight || document.body.scrollHeight;
+                var height = getContentHeight();
+                if (!height) {
+                    return;
+                }
                 parent.postMessage({ type: 'matsu-sale-height', height: height }, 'https://matsu-f.com');
             }
+
+            window.addEventListener('DOMContentLoaded', sendHeight);
             window.addEventListener('load', sendHeight);
             window.addEventListener('resize', sendHeight);
+            if (window.ResizeObserver) {
+                new ResizeObserver(sendHeight).observe(document.body);
+            }
+            setTimeout(sendHeight, 300);
+            setTimeout(sendHeight, 1000);
         })();
     </script>
     </body>

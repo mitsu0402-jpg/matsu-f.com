@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // Shared PDO factory for the control panel.
 function getPDO(): PDO
 {

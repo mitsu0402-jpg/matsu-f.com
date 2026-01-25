@@ -361,5 +361,25 @@ $detailItems = [
     })();
 </script>
 <?php endif; ?>
+<script>
+    (function () {
+        var params = new URLSearchParams(window.location.search);
+        var itemId = params.get('id') || '';
+        var body = new URLSearchParams();
+        body.set('page_path', window.location.pathname || '/');
+        body.set('item_id', itemId);
+
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon('/api/page-view.php', body);
+            return;
+        }
+
+        fetch('/api/page-view.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+            body: body.toString()
+        }).catch(function () {});
+    })();
+</script>
 </body>
 </html>
