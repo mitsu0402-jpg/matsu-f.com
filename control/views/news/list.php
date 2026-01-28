@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
             $title = trim((string)($_POST['title'] ?? ''));
             $body = trim((string)($_POST['body'] ?? ''));
-            $linkUrl = '';
+            $linkUrl = trim((string)($_POST['link_url'] ?? ''));
             $publishedAt = '';
             $sort = 0;
             $status = (int)($_POST['status'] ?? 1);
@@ -36,20 +36,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'タイトルと本文を入力してください。';
             } else {
                 if ($id) {
-                    $stmt = $pdo->prepare('UPDATE notices SET title = :title, body = :body, status = :status, updated_at = NOW() WHERE id = :id');
+                    $stmt = $pdo->prepare('UPDATE notices SET title = :title, body = :body, link_url = :link_url, status = :status, updated_at = NOW() WHERE id = :id');
                     $stmt->execute([
                         'title' => $title,
                         'body' => $body,
+                        'link_url' => $linkUrl,
                         'status' => $status,
                         'id' => $id,
                     ]);
                     $message = '更新しました。';
                     $editId = $id;
                 } else {
-                    $stmt = $pdo->prepare('INSERT INTO notices (title, body, status, created_at, updated_at) VALUES (:title, :body, :status, NOW(), NOW())');
+                    $stmt = $pdo->prepare('INSERT INTO notices (title, body, link_url, status, created_at, updated_at) VALUES (:title, :body, :link_url, :status, NOW(), NOW())');
                     $stmt->execute([
                         'title' => $title,
                         'body' => $body,
+                        'link_url' => $linkUrl,
                         'status' => $status,
                     ]);
                     $message = '追加しました。';
@@ -77,7 +79,7 @@ try {
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     if ($editId) {
-        $stmt = $pdo->prepare('SELECT id, title, body, status FROM notices WHERE id = :id');
+        $stmt = $pdo->prepare('SELECT id, title, body, link_url, status FROM notices WHERE id = :id');
         $stmt->execute(['id' => $editId]);
         $editRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
@@ -85,7 +87,7 @@ try {
     $error = 'エラーが発生しました。' . $e->getMessage();
 }
 
-$editRow = $editRow ?? ['id' => '', 'title' => '', 'body' => '', 'status' => 1];
+$editRow = $editRow ?? ['id' => '', 'title' => '', 'body' => '', 'link_url' => '', 'status' => 1];
 $isEditing = $editRow['id'] !== '';
 ?>
 
@@ -110,6 +112,11 @@ $isEditing = $editRow['id'] !== '';
     <div>
       <label>本文 <span class="req">※</span>
         <textarea name="body" rows="4" required><?php echo h((string)$editRow['body']); ?></textarea>
+      </label>
+    </div>
+    <div>
+      <label>リンク先
+        <input type="text" name="link_url" value="<?php echo h((string)($editRow['link_url'] ?? '')); ?>">
       </label>
     </div>
     <div>

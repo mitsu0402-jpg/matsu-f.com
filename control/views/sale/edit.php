@@ -63,6 +63,7 @@ $fields = [
     'management_type',
     'management_company',
     'current_status',
+    'land_category',
     'building_confirmation_number',
     'handover_time',
     'pets_allowed',
@@ -151,7 +152,7 @@ try {
                 if ($noticeBody === '') {
                     $noticeBody = '新しい売り物件を追加しました。';
                 }
-                $noticeLink = 'https://matsu-f.com/sale.php?id=' . $id;
+                $noticeLink = 'https://matsu-f.com/saledetail/?id=' . $id;
                 $noticeStmt = $pdo->prepare('INSERT INTO notices (title, body, link_url, published_at, sort, status, created_at, updated_at) VALUES (:title, :body, :link_url, :published_at, :sort, :status, NOW(), NOW())');
                 $noticeStmt->execute([
                     'title' => $noticeTitle,
@@ -482,7 +483,7 @@ try {
     <label>都市計画
       <select name="urban_planning">
         <?php
-        $urbanPlanningOptions = ['市街化区域', '市街化調整区域', '非線引区域', '準都市計画区域', 'その他'];
+        $urbanPlanningOptions = ['市街化区域', '市街化調整区域', '非線引区域', '準都市計画区域', '区域外', 'その他'];
         foreach ($urbanPlanningOptions as $option):
           $selected = ((string)$values['urban_planning'] === $option) ? 'selected' : '';
         ?>
@@ -496,6 +497,7 @@ try {
       <select name="zoning">
         <?php
         $zoningOptions = [
+          '無指定',
           '第一種低層住居専用地域',
           '第二種低層住居専用地域',
           '第一種中高層住居専用地域',
@@ -522,7 +524,7 @@ try {
     <label>建ぺい率
       <select name="building_coverage_ratio">
         <?php
-        $coverageOptions = ['40%', '50%', '60%', '70%', '80%', '90%', '100%'];
+        $coverageOptions = ['ー', '40%', '50%', '60%', '70%', '80%', '90%', '100%'];
         $coverageValue = (string)$values['building_coverage_ratio'];
         if ($coverageValue === '') {
           $coverageValue = '60%';
@@ -539,7 +541,7 @@ try {
     <label>容積率
       <select name="floor_area_ratio">
         <?php
-        $floorAreaOptions = ['60%', '80%', '100%', '120%', '150%', '160%', '200%', '250%', '300%', '400%', '500%', '600%'];
+        $floorAreaOptions = ['ー', '60%', '80%', '100%', '120%', '150%', '160%', '200%', '250%', '300%', '400%', '500%', '600%'];
         $floorAreaValue = (string)$values['floor_area_ratio'];
         if ($floorAreaValue === '') {
           $floorAreaValue = '60%';
@@ -569,6 +571,19 @@ try {
         $currentStatusOptions = ['空室', '居住中', '賃貸中', '更地', '建築中', '完成済', 'その他'];
         foreach ($currentStatusOptions as $option):
           $selected = ((string)$values['current_status'] === $option) ? 'selected' : '';
+        ?>
+          <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+  </div>
+  <div>
+    <label>地目
+      <select name="land_category">
+        <?php
+        $landCategoryOptions = ['宅地', '田', '畑', '山林', '雑種地', '原野', 'その他'];
+        foreach ($landCategoryOptions as $option):
+          $selected = ((string)$values['land_category'] === $option) ? 'selected' : '';
         ?>
           <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
         <?php endforeach; ?>

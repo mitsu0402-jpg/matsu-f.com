@@ -59,6 +59,7 @@ $fields = [
     'hospitals',
     'public_facilities',
     'shared_spaces',
+    'land_category',
     'sonota',
     'sort',
 ];
@@ -138,7 +139,7 @@ try {
                 if ($noticeBody === '') {
                     $noticeBody = '新しい賃貸物件を追加しました。';
                 }
-                $noticeLink = 'https://matsu-f.com/rent.php?id=' . $id;
+                $noticeLink = 'https://matsu-f.com/rentdetail/?id=' . $id;
                 $noticeStmt = $pdo->prepare('INSERT INTO notices (title, body, link_url, published_at, sort, status, created_at, updated_at) VALUES (:title, :body, :link_url, :published_at, :sort, :status, NOW(), NOW())');
                 $noticeStmt->execute([
                     'title' => $noticeTitle,
@@ -493,6 +494,19 @@ try {
   <div class="span-2">
     <label>共有部
       <textarea name="shared_spaces" rows="3"><?php echo h((string)$values['shared_spaces']); ?></textarea>
+    </label>
+  </div>
+  <div>
+    <label>地目
+      <select name="land_category">
+        <?php
+        $landCategoryOptions = ['宅地', '田', '畑', '山林', '雑種地', '原野', 'その他'];
+        foreach ($landCategoryOptions as $option):
+          $selected = ((string)$values['land_category'] === $option) ? 'selected' : '';
+        ?>
+          <option value="<?php echo h($option); ?>" <?php echo $selected; ?>><?php echo h($option); ?></option>
+        <?php endforeach; ?>
+      </select>
     </label>
   </div>
   <div><label>その他 <input type="text" name="sonota" value="<?php echo h((string)$values['sonota']); ?>"></label></div>
