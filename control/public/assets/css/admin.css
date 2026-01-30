@@ -82,6 +82,28 @@ body.admin {
   border-color: var(--accent);
 }
 
+.nav-card.is-current {
+  border: 2px solid var(--accent);
+  border-radius: 22px;
+  transform: translateY(-4px);
+  box-shadow: 0 18px 32px rgba(25, 35, 28, 0.2);
+}
+
+.nav-card.is-current::before {
+  content: "現在";
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.08em;
+  box-shadow: 0 6px 14px rgba(25, 35, 28, 0.22);
+  z-index: 1;
+}
+
 .nav-card::after {
   content: "";
   position: absolute;
@@ -89,6 +111,11 @@ body.admin {
   background: linear-gradient(180deg, rgba(15, 20, 18, 0.2), rgba(176, 250, 220, 0.55));
   border-radius: 14px;
   z-index: 0;
+}
+
+.nav-card.is-current::after {
+  background: linear-gradient(180deg, rgba(15, 20, 18, 0.08), rgba(86, 154, 122, 0.55));
+  border-radius: 22px;
 }
 
 .nav-card span,

@@ -48,14 +48,14 @@ $documentTitle = 'コントロールパネル ' . $pageTitle;
   </header>
 
   <nav class="nav-grid">
-    <a class="nav-card nav-card-1" href="index.php?page=dashboard">ダッシュボード</a>
-    <a class="nav-card nav-card-7" href="index.php?page=news_list">お知らせ一覧</a>
-    <a class="nav-card nav-card-2" href="index.php?page=sale_create">売り物件追加</a>
-    <a class="nav-card nav-card-3" href="index.php?page=sale_list">売り物件一覧</a>
-    <a class="nav-card nav-card-4" href="index.php?page=rent_create">賃貸物件追加</a>
-    <a class="nav-card nav-card-5" href="index.php?page=rent_list">賃貸物件一覧</a>
-    <a class="nav-card nav-card-6" href="index.php?page=area_list">エリア一覧</a>
-    <a class="nav-card nav-card-8" href="index.php?page=settings">設定</a>
+    <a class="nav-card nav-card-1<?php echo $currentPage === 'dashboard' ? ' is-current' : ''; ?>" href="index.php?page=dashboard" <?php echo $currentPage === 'dashboard' ? 'aria-current="page"' : ''; ?>>ダッシュボード</a>
+    <a class="nav-card nav-card-7<?php echo $currentPage === 'news_list' ? ' is-current' : ''; ?>" href="index.php?page=news_list" <?php echo $currentPage === 'news_list' ? 'aria-current="page"' : ''; ?>>お知らせ一覧</a>
+    <a class="nav-card nav-card-2<?php echo $currentPage === 'sale_create' ? ' is-current' : ''; ?>" href="index.php?page=sale_create" <?php echo $currentPage === 'sale_create' ? 'aria-current="page"' : ''; ?>>売り物件追加</a>
+    <a class="nav-card nav-card-3<?php echo $currentPage === 'sale_list' ? ' is-current' : ''; ?>" href="index.php?page=sale_list" <?php echo $currentPage === 'sale_list' ? 'aria-current="page"' : ''; ?>>売り物件一覧</a>
+    <a class="nav-card nav-card-4<?php echo $currentPage === 'rent_create' ? ' is-current' : ''; ?>" href="index.php?page=rent_create" <?php echo $currentPage === 'rent_create' ? 'aria-current="page"' : ''; ?>>賃貸物件追加</a>
+    <a class="nav-card nav-card-5<?php echo $currentPage === 'rent_list' ? ' is-current' : ''; ?>" href="index.php?page=rent_list" <?php echo $currentPage === 'rent_list' ? 'aria-current="page"' : ''; ?>>賃貸物件一覧</a>
+    <a class="nav-card nav-card-6<?php echo $currentPage === 'area_list' ? ' is-current' : ''; ?>" href="index.php?page=area_list" <?php echo $currentPage === 'area_list' ? 'aria-current="page"' : ''; ?>>エリア一覧</a>
+    <a class="nav-card nav-card-8<?php echo $currentPage === 'settings' ? ' is-current' : ''; ?>" href="index.php?page=settings" <?php echo $currentPage === 'settings' ? 'aria-current="page"' : ''; ?>>設定</a>
   </nav>
 
   <main class="content">
