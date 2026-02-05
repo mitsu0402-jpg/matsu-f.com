@@ -1,6 +1,6 @@
-﻿<?php
-require_once __DIR__ . '/../control/lib/db.php';
-$googleConfig = require __DIR__ . '/../control/config/google.php';
+<?php
+require_once __DIR__ . '/control/lib/db.php';
+$googleConfig = require __DIR__ . '/control/config/google.php';
 $mapsApiKey = trim((string)($googleConfig['maps_js_api_key'] ?? ''));
 
 function h(string $value): string
@@ -9,33 +9,34 @@ function h(string $value): string
 }
 
 $rows = [];
-$error = '';
+    $error = '';
 
 try {
     $pdo = getPDO();
     $sql = 'SELECT id, name, cate, price, location, lat, lng,
         (SELECT file_path
          FROM property_images
-         WHERE property_type = \'rent\'
+         WHERE property_type = \'sale\'
            AND status = 1
-           AND property_id = rent_properties.id
+           AND property_id = sale_properties.id
          ORDER BY sort ASC, id ASC
          LIMIT 1) AS image_path
-        FROM `rent_properties`
+        FROM `sale_properties`
         WHERE `status` = 1
         ORDER BY lastUpdateDate DESC, id DESC';
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
-    $error = 'エラーが発生しました：' . $e->getMessage();
-}
+     $error = 'エラーが発生しました：' . $e->getMessage();}
 ?>
 <!doctype html>
 <html lang="ja">
     <head>
     <meta charset="UTF-8">
+    <title>売り物件一覧</title>
     <style>
+        <?php require __DIR__ . '/inc/siteHeaderFooterCss.php'; ?>
         :root {
             --card-radius: 12px;
             --card-gap: 16px;
@@ -44,10 +45,14 @@ try {
 
         body {
             margin: 0;
-            padding: 5%;
-            font-family: "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", serif;
+            padding: 0;
+            font-family: Monda, Helvetica, Arial, Sans-Serif, serif;
             background: #ffffff;
             color: #1b1b1b;
+        }
+
+        .page-shell {
+            padding: 5%;
         }
 
         .osusume-map {
@@ -76,7 +81,7 @@ try {
 
         .osusume-grid {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: var(--card-gap);
         }
 
@@ -143,7 +148,7 @@ try {
                 --card-gap: 8px;
             }
 
-            body {
+            .page-shell {
                 padding: 1%;
             }
 
@@ -165,8 +170,14 @@ try {
     </style>
     </head>
 
-
     <body>
+    <?php
+$siteHeroTitle = '物件一覧';
+$siteNavActive = 'sale';
+require __DIR__ . '/inc/siteHeader.php';
+?>
+<main class="site-main">
+    <div class="page-shell">
     <?php if ($error): ?>
         <p><?php echo h($error); ?></p>
     <?php elseif (!$rows): ?>
@@ -178,18 +189,20 @@ try {
             <?php foreach ($rows as $row): ?>
                 <?php
                     $imagePath = trim((string)($row['image_path'] ?? ''));
-                    $imageUrl = $imagePath !== '' ? '/control/' . ltrim($imagePath, '/') : '';
-                    $style = $imageUrl !== '' ? "background-image: url('" . h($imageUrl) . "');" : '';
-                    $detailUrl = 'https://matsu-f.com/rentdetail/?id=' . urlencode((string)$row['id']);
+                    $cate = trim((string)($row['cate'] ?? ''));
+                    $fallbackImageUrl = $cate === '土地' ? '/image/sale-rentland.webp' : '/image/salehouse.webp';
+                    $imageUrl = $imagePath !== '' ? '/control/' . ltrim($imagePath, '/') : $fallbackImageUrl;
+                    $style = "background-image: url('" . h($imageUrl) . "');";
+                    $detailUrl = 'https://matsu-f.com/saleDetail.php?id=' . urlencode((string)$row['id']);
                     $isHidden = $index >= 20;
                     $index++;
                 ?>
-                <a class="osusume-card<?php echo $isHidden ? ' is-hidden' : ''; ?>" href="<?php echo h($detailUrl); ?>">
+                <a class="osusume-card<?php echo $isHidden ? ' is-hidden' : ''; ?>" href="<?php echo h($detailUrl); ?>" target="_top">
                     <div class="osusume-image" style="<?php echo $style; ?>"></div>
                     <div class="osusume-body">
                         <div class="osusume-name"><?php echo h((string)$row['name']); ?></div>
                         <div class="osusume-location"><?php echo h((string)$row['location']); ?></div>
-                        <div class="osusume-price">家賃月額　<?php echo number_format((int)$row['price']); ?> 円</div>
+                        <div class="osusume-price"><?php echo number_format((int)$row['price']); ?> 万円</div>
 
                     </div>
                 </a>
@@ -197,7 +210,7 @@ try {
         </div>
         <?php if ($mapsApiKey !== ''): ?>
         <h2 class="osusume-title" style="margin-top:100px">物件マップ</h2>
-        <div id="rent-map" class="osusume-map"></div>
+        <div id="sale-map" class="osusume-map"></div>
         <?php endif; ?>
     <?php endif; ?>
     <?php if ($rows && $mapsApiKey !== ''): ?>
@@ -218,7 +231,7 @@ try {
     <script src="https://maps.googleapis.com/maps/api/js?key=<?php echo h($mapsApiKey); ?>"></script>
     <script>
         (function () {
-            var mapEl = document.getElementById('rent-map');
+            var mapEl = document.getElementById('sale-map');
             if (!mapEl) {
                 return;
             }
@@ -251,6 +264,12 @@ try {
         })();
     </script>
     <?php endif; ?>
+    </div>
+    </main>
+<?php
+$siteFooterMaxWidth = '1200px';
+require __DIR__ . '/inc/siteFooter.php';
+?>
     <script>
         (function () {
             var hiddenCards = Array.prototype.slice.call(
@@ -287,3 +306,4 @@ try {
     </script>
     </body>
 </html>
+

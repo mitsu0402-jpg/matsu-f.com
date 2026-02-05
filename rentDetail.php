@@ -1,8 +1,8 @@
 <?php
 header('Content-Type: text/html; charset=UTF-8');
 
-require_once __DIR__ . '/../control/lib/db.php';
-$googleConfig = require __DIR__ . '/../control/config/google.php';
+require_once __DIR__ . '/control/lib/db.php';
+$googleConfig = require __DIR__ . '/control/config/google.php';
 $mapsApiKey = trim((string)($googleConfig['maps_js_api_key'] ?? ''));
 
 function h(string $value): string
@@ -117,10 +117,11 @@ $detailItems = [
     <meta charset="UTF-8">
     <?php
     $pageName = trim((string)($row['name'] ?? ''));
-    $pageTitle = $pageName !== '' ? $pageName . '　貸し物件詳細　松永不動産' : '貸し物件詳細　松永不動産';
+    $pageTitle = $pageName !== '' ? $pageName . '　貸し物件詳細' : '貸し物件詳細';
     ?>
     <title><?php echo h($pageTitle); ?></title>
     <style>
+        <?php require __DIR__ . '/inc/siteHeaderFooterCss.php'; ?>
         :root {
             --accent: #7a4b2a;
             --line: #e5e1db;
@@ -136,7 +137,7 @@ $detailItems = [
         body {
             margin: 0;
             padding: 0;
-            font-family: "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", serif;
+            font-family: Monda, Helvetica, Arial, Sans-Serif, serif;
             background: var(--bg);
             color: #1b1b1b;
         }
@@ -155,7 +156,7 @@ $detailItems = [
         }
 
         .detail-title {
-            font-size: 28px;
+            font-size: 20px;
             letter-spacing: 0.06em;
             margin: 0;
         }
@@ -240,7 +241,7 @@ $detailItems = [
             border: none;
             background: rgba(255, 255, 255, 0.92);
             color: #7a4b2a;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 700;
             cursor: pointer;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.18);
@@ -249,6 +250,13 @@ $detailItems = [
         .like-button.is-disabled {
             opacity: 0.6;
             cursor: default;
+        }
+
+        .like-icon {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            flex: 0 0 auto;
         }
 
         .image-thumbs {
@@ -326,6 +334,7 @@ $detailItems = [
         }
 
         @media (max-width: 900px) {
+
             .detail-main {
                 grid-template-columns: 1fr;
             }
@@ -333,8 +342,16 @@ $detailItems = [
     </style>
 </head>
 <body>
+<?php
+$siteHeroTitle = '物件詳細';
+$siteNavActive = 'rent';
+require __DIR__ . '/inc/siteHeader.php';
+?>
+<main class="site-main">
 <?php if ($error): ?>
-    <p><?php echo h($error); ?></p>
+    <div class="detail-shell">
+        <p><?php echo h($error); ?></p>
+    </div>
 <?php else: ?>
     <div class="detail-shell">
         <header class="detail-header">
@@ -350,7 +367,7 @@ $detailItems = [
                 $heroUrl = $imageUrls[0] ?? '';
                 $heroStyle = $heroUrl !== '' ? "background-image: url('" . h($heroUrl) . "');" : '';
                 ?>
-                <?php $likePagePath = '/rentdetail/?id=' . urlencode((string)$id); ?>
+                <?php $likePagePath = '/rentDetail.php?id=' . urlencode((string)$id); ?>
                 <div style="display:flex; justify-content:flex-end; margin: 0 0 8px;">
                     <button
                         class="like-button"
@@ -360,7 +377,8 @@ $detailItems = [
                         data-id="<?php echo h((string)$id); ?>"
                         data-path="<?php echo h($likePagePath); ?>"
                         aria-label="いいね">
-                        いいね！ <span id="rent-like-count">0</span>
+                        <img class="like-icon" src="/image/btn_iine.png" alt="">
+                        いいね！ <span id="rent-like-count">100</span>
                     </button>
                 </div>
                 <div class="hero-wrap">
@@ -409,6 +427,11 @@ $detailItems = [
         <?php endif; ?>
     </div>
 <?php endif; ?>
+</main>
+<?php
+$siteFooterMaxWidth = '1100px';
+require __DIR__ . '/inc/siteFooter.php';
+?>
 
 <script>
     (function () {
@@ -423,12 +446,16 @@ $detailItems = [
             page_path: btn.getAttribute('data-path') || ''
         });
 
+        function normalizeCount(count) {
+            return count < 100 ? count + 100 : count;
+        }
+
         function updateCount() {
             fetch('/api/like.php?' + payload.toString())
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     if (data && typeof data.count === 'number') {
-                        countEl.textContent = String(data.count);
+                        countEl.textContent = String(normalizeCount(data.count));
                     }
                 })
                 .catch(function () {});
@@ -446,7 +473,7 @@ $detailItems = [
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     if (data && typeof data.count === 'number') {
-                        countEl.textContent = String(data.count);
+                        countEl.textContent = String(normalizeCount(data.count));
                     }
                     if (data && data.liked === false) {
                         btn.classList.add('is-disabled');

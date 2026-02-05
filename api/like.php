@@ -52,11 +52,12 @@ try {
         ':page_path' => $pagePath,
     ]);
     $count = (int)$countStmt->fetchColumn();
+    $baseCount = 100;
 
     json_response([
         'ok' => true,
         'liked' => $method === 'POST' ? $liked : null,
-        'count' => $count,
+        'count' => $count + $baseCount,
     ]);
 } catch (Throwable $e) {
     json_response(['ok' => false, 'error' => 'server_error'], 500);

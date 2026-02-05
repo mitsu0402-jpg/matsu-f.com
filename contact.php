@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: text/html; charset=UTF-8');
 
-require_once __DIR__ . '/../control/lib/db.php';
+require_once __DIR__ . '/control/lib/db.php';
 
 if (isset($_GET['debug']) && $_GET['debug'] === '1') {
     ini_set('display_errors', '1');
@@ -65,6 +65,7 @@ if (!$showThanks && $_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <style>
+        <?php require __DIR__ . '/inc/siteHeaderFooterCss.php'; ?>
         :root {
             --border-color: #d6d0c7;
             --focus-color: #7a4b2a;
@@ -74,10 +75,14 @@ if (!$showThanks && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
         body {
             margin: 0;
-            padding: 24px;
-            font-family: "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", serif;
+            padding: 0;
+            font-family: Monda, Helvetica, Arial, Sans-Serif, serif;
             background: var(--bg);
             color: #1b1b1b;
+        }
+
+        .contact-page {
+            padding: 24px;
         }
 
         .contact-wrap {
@@ -160,57 +165,70 @@ if (!$showThanks && $_SERVER['REQUEST_METHOD'] === 'POST') {
         .contact-submit:hover {
             opacity: 0.9;
         }
+
+        @media (max-width: 600px) {
+            .contact-page {
+                padding: 12px;
+            }
+
+            .contact-wrap {
+                padding: 18px 14px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="contact-wrap">
-        <?php if ($showThanks): ?>
-            <h2 class="contact-title">送信ありがとうございました</h2>
-            <p class="contact-note">内容を確認後、担当よりご連絡いたします。</p>
-        <?php else: ?>
-            <h2 class="contact-title">お問い合わせ</h2>
-            <?php if ($errors): ?>
-                <p class="contact-message">
-                    <?php echo h(implode(' ', $errors)); ?>
-                </p>
+<?php
+$siteHeroTitle = 'お問い合わせ';
+$siteNavActive = 'contact';
+require __DIR__ . '/inc/siteHeader.php';
+?>
+<main class="site-main">
+    <div class="contact-page">
+        <div class="contact-wrap">
+            <?php if ($showThanks): ?>
+                <h2 class="contact-title">送信ありがとうございました</h2>
+                <p class="contact-note">内容を確認後、担当よりご連絡いたします。</p>
+            <?php else: ?>
+                <h2 class="contact-title">お問い合わせ</h2>
+                <?php if ($errors): ?>
+                    <p class="contact-message">
+                        <?php echo h(implode(' ', $errors)); ?>
+                    </p>
+                <?php endif; ?>
+                <form class="contact-form" method="post" action="">
+                    <div class="contact-field">
+                        <label class="contact-label" for="contact-name">お名前</label>
+                        <input class="contact-input" id="contact-name" name="name" type="text" value="<?php echo h($values['name']); ?>">
+                    </div>
+                    <div class="contact-field">
+                        <label class="contact-label" for="contact-contact">連絡先（TEL またはメール）</label>
+                        <input class="contact-input" id="contact-contact" name="contact" type="text" value="<?php echo h($values['contact']); ?>">
+                    </div>
+                    <div class="contact-field">
+                        <label class="contact-label" for="contact-request">ご要望</label>
+                        <select class="contact-select" id="contact-request" name="request">
+                            <option value="sell" <?php echo $values['request'] === 'sell' ? 'selected' : ''; ?>>売りたい</option>
+                            <option value="rent" <?php echo $values['request'] === 'rent' ? 'selected' : ''; ?>>貸したい</option>
+                            <option value="buy" <?php echo $values['request'] === 'buy' ? 'selected' : ''; ?>>買いたい</option>
+                            <option value="borrow" <?php echo $values['request'] === 'borrow' ? 'selected' : ''; ?>>借りたい</option>
+                            <option value="consult" <?php echo $values['request'] === 'consult' ? 'selected' : ''; ?>>相談したい</option>
+                        </select>
+                    </div>
+                    <div class="contact-field">
+                        <label class="contact-label" for="contact-note">備考</label>
+                        <textarea class="contact-textarea" id="contact-note" name="note"><?php echo h($values['note']); ?></textarea>
+                    </div>
+                    <button class="contact-submit" type="submit">送信</button>
+                    <p class="contact-note">※送信内容は保存されます。</p>
+                </form>
             <?php endif; ?>
-            <form class="contact-form" method="post" action="">
-                <div class="contact-field">
-                    <label class="contact-label" for="contact-name">お名前</label>
-                    <input class="contact-input" id="contact-name" name="name" type="text" value="<?php echo h($values['name']); ?>">
-                </div>
-                <div class="contact-field">
-                    <label class="contact-label" for="contact-contact">連絡先（TEL またはメール）</label>
-                    <input class="contact-input" id="contact-contact" name="contact" type="text" value="<?php echo h($values['contact']); ?>">
-                </div>
-                <div class="contact-field">
-                    <label class="contact-label" for="contact-request">ご要望</label>
-                    <select class="contact-select" id="contact-request" name="request">
-                        <option value="sell" <?php echo $values['request'] === 'sell' ? 'selected' : ''; ?>>売りたい</option>
-                        <option value="rent" <?php echo $values['request'] === 'rent' ? 'selected' : ''; ?>>貸したい</option>
-                        <option value="buy" <?php echo $values['request'] === 'buy' ? 'selected' : ''; ?>>買いたい</option>
-                        <option value="borrow" <?php echo $values['request'] === 'borrow' ? 'selected' : ''; ?>>借りたい</option>
-                        <option value="consult" <?php echo $values['request'] === 'consult' ? 'selected' : ''; ?>>相談したい</option>
-                    </select>
-                </div>
-                <div class="contact-field">
-                    <label class="contact-label" for="contact-note">備考</label>
-                    <textarea class="contact-textarea" id="contact-note" name="note"><?php echo h($values['note']); ?></textarea>
-                </div>
-                <button class="contact-submit" type="submit">送信</button>
-                <p class="contact-note">※送信内容は保存されます。</p>
-            </form>
-        <?php endif; ?>
+        </div>
     </div>
-    <script>
-        (function () {
-            function sendHeight() {
-                var height = document.documentElement.scrollHeight || document.body.scrollHeight;
-                parent.postMessage({ type: 'matsu-sale-height', height: height }, 'https://matsu-f.com');
-            }
-            window.addEventListener('load', sendHeight);
-            window.addEventListener('resize', sendHeight);
-        })();
-    </script>
+</main>
+<?php
+$siteFooterMaxWidth = '1200px';
+require __DIR__ . '/inc/siteFooter.php';
+?>
 </body>
 </html>

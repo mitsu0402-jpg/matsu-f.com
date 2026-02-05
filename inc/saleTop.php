@@ -41,7 +41,7 @@ try {
     } catch (Throwable $e) {
         // Ignore logging errors to avoid breaking page rendering.
     }
-    $sql = 'SELECT id, name, price, location, sort,
+    $sql = 'SELECT id, name, cate, price, location, sort,
         (SELECT file_path
          FROM property_images
          WHERE property_type = \'sale\'
@@ -51,9 +51,8 @@ try {
          LIMIT 1) AS image_path
         FROM `sale_properties`
         WHERE `status` = 1
-          AND `sort` BETWEEN 1 AND 3
-        ORDER BY `sort` ASC, id DESC
-        LIMIT 3';
+        ORDER BY `sort` DESC, id DESC
+        LIMIT 6';
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -174,9 +173,11 @@ try {
             <?php foreach ($rows as $row): ?>
                 <?php
                     $imagePath = trim((string)($row['image_path'] ?? ''));
-                    $imageUrl = $imagePath !== '' ? '/control/' . ltrim($imagePath, '/') : '';
-                    $style = $imageUrl !== '' ? "background-image: url('" . h($imageUrl) . "');" : '';
-                    $detailUrl = 'https://matsu-f.com/saledetail/?id=' . urlencode((string)$row['id']);
+                    $cate = trim((string)($row['cate'] ?? ''));
+                    $fallbackImageUrl = $cate === '土地' ? '/image/sale-rentland.webp' : '/image/salehouse.webp';
+                    $imageUrl = $imagePath !== '' ? '/control/' . ltrim($imagePath, '/') : $fallbackImageUrl;
+                    $style = "background-image: url('" . h($imageUrl) . "');";
+                    $detailUrl = 'https://matsu-f.com/saleDetail.php?id=' . urlencode((string)$row['id']);
                 ?>
                 <a class="osusume-card" href="<?php echo h($detailUrl); ?>" target="_blank" rel="noopener">
                     <div class="osusume-image" style="<?php echo $style; ?>"></div>

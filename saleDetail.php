@@ -1,8 +1,8 @@
 <?php
 header('Content-Type: text/html; charset=UTF-8');
 
-require_once __DIR__ . '/../control/lib/db.php';
-$googleConfig = require __DIR__ . '/../control/config/google.php';
+require_once __DIR__ . '/control/lib/db.php';
+$googleConfig = require __DIR__ . '/control/config/google.php';
 $mapsApiKey = trim((string)($googleConfig['maps_js_api_key'] ?? ''));
 
 function h(string $value): string
@@ -81,6 +81,15 @@ $imageUrls = array_values(array_filter(array_map(function ($path) {
     $path = trim((string)$path);
     return $path !== '' ? '/control/' . ltrim($path, '/') : '';
 }, $images)));
+$hasGalleryImages = !empty($imageUrls);
+
+$cate = trim((string)($row['cate'] ?? ''));
+$fallbackImageUrl = '/image/salehouse.webp';
+if ($cate === '土地') {
+    $fallbackImageUrl = '/image/sale-rentland.webp';
+} elseif (in_array($cate, ['賃貸', 'アパート', 'マンション', '借家'], true)) {
+    $fallbackImageUrl = '/image/renthouse.webp';
+}
 
 $displayPrice = isset($row['price']) && $row['price'] !== '' ? number_format((int)$row['price']) : '';
 $displayLocation = (string)($row['location'] ?? '');
@@ -138,10 +147,11 @@ $optionalItems = array_filter($optionalItems, function ($value) {
     <meta charset="UTF-8">
     <?php
     $pageName = trim((string)($row['name'] ?? ''));
-    $pageTitle = $pageName !== '' ? $pageName . '　売り物件詳細　松永不動産' : '売り物件詳細　松永不動産';
+    $pageTitle = $pageName !== '' ? $pageName . '　売り物件詳細' : '売り物件詳細';
     ?>
     <title><?php echo h($pageTitle); ?></title>
     <style>
+        <?php require __DIR__ . '/inc/siteHeaderFooterCss.php'; ?>
         :root {
             --accent: #d7665b;
             --bg: #ffffff;
@@ -156,13 +166,13 @@ $optionalItems = array_filter($optionalItems, function ($value) {
         body {
             margin: 0;
             padding: 0;
-            font-family: "Yu Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Noto Serif JP", serif;
+            font-family: Monda, Helvetica, Arial, Sans-Serif, serif;
             background: var(--bg);
             color: #1b1b1b;
         }
 
         .detail-shell {
-            max-width: 1000px;
+            max-width: 800px;
             margin: 0 auto;
             display: grid;
             gap: 16px;
@@ -240,7 +250,7 @@ $optionalItems = array_filter($optionalItems, function ($value) {
             border: none;
             background: rgba(255, 255, 255, 0.92);
             color: #7a4b2a;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 700;
             cursor: pointer;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.18);
@@ -249,6 +259,13 @@ $optionalItems = array_filter($optionalItems, function ($value) {
         .like-button.is-disabled {
             opacity: 0.6;
             cursor: default;
+        }
+
+        .like-icon {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            flex: 0 0 auto;
         }
 
         .detail-panel {
@@ -263,6 +280,16 @@ $optionalItems = array_filter($optionalItems, function ($value) {
             gap: 16px;
             padding: 16px;
             align-items: end;
+        }
+
+        .panel-row.no-thumbs {
+            grid-template-columns: 1fr;
+        }
+
+        .panel-row.no-thumbs .info-card {
+            max-width: 760px;
+            width: 100%;
+            margin: 0 auto;
         }
 
         .thumb-grid {
@@ -307,7 +334,7 @@ $optionalItems = array_filter($optionalItems, function ($value) {
         }
 
         .info-title {
-            font-size: 18px;
+            font-size: 15px;
             font-weight: 600;
             margin-top: 5px;
         }
@@ -350,7 +377,7 @@ $optionalItems = array_filter($optionalItems, function ($value) {
         }
 
         .info-price .tax-label {
-            font-size: 18px;
+            font-size: 15px;
             font-weight: 600;
         }
 
@@ -424,6 +451,7 @@ $optionalItems = array_filter($optionalItems, function ($value) {
         }
 
         @media (max-width: 900px) {
+
             .panel-row {
                 grid-template-columns: 1fr;
             }
@@ -435,16 +463,24 @@ $optionalItems = array_filter($optionalItems, function ($value) {
     </style>
 </head>
 <body>
+<?php
+$siteHeroTitle = '物件詳細';
+$siteNavActive = 'sale';
+require __DIR__ . '/inc/siteHeader.php';
+?>
+<main class="site-main">
 <?php if ($error): ?>
-    <p><?php echo h($error); ?></p>
+    <div class="detail-shell">
+        <p><?php echo h($error); ?></p>
+    </div>
 <?php else: ?>
     <div class="detail-shell">
         <?php
-        $heroUrl = $imageUrls[0] ?? '';
+        $heroUrl = $imageUrls[0] ?? $fallbackImageUrl;
         $heroStyle = $heroUrl !== '' ? "background-image: url('" . h($heroUrl) . "');" : '';
         ?>
         <div class="hero-title"><?php echo h((string)($row['name'] ?? '')); ?></div>
-        <?php $likePagePath = '/saledetail/?id=' . urlencode((string)$id); ?>
+        <?php $likePagePath = '/saleDetail.php?id=' . urlencode((string)$id); ?>
         <div style="display:flex; justify-content:flex-end; margin: 0 0 8px;">
             <button
                 class="like-button"
@@ -454,46 +490,39 @@ $optionalItems = array_filter($optionalItems, function ($value) {
                 data-id="<?php echo h((string)$id); ?>"
                 data-path="<?php echo h($likePagePath); ?>"
                 aria-label="いいね">
-                いいね！ <span id="sale-like-count">0</span>
+                <img class="like-icon" src="/image/btn_iine.png" alt="">
+                いいね！ <span id="sale-like-count">100</span>
             </button>
         </div>
         <div class="hero-wrap">
             <div class="image-hero" id="sale-hero" style="<?php echo $heroStyle; ?>"></div>
-            <button class="hero-arrow left" id="sale-prev" type="button" aria-label="Previous image">&lsaquo;</button>
-            <button class="hero-arrow right" id="sale-next" type="button" aria-label="Next image">&rsaquo;</button>
-            <div class="hero-counter" id="sale-counter"></div>
+            <?php if ($hasGalleryImages): ?>
+                <button class="hero-arrow left" id="sale-prev" type="button" aria-label="Previous image">&lsaquo;</button>
+                <button class="hero-arrow right" id="sale-next" type="button" aria-label="Next image">&rsaquo;</button>
+                <div class="hero-counter" id="sale-counter"></div>
+            <?php endif; ?>
         </div>
         <section class="detail-panel">
-            <div class="panel-row">
+            <div class="panel-row<?php echo !$hasGalleryImages ? ' no-thumbs' : ''; ?>">
+                <?php if ($hasGalleryImages): ?>
                 <div id="sale-thumbs">
                     <div class="thumb-grid is-three">
-                        <?php if ($imageUrls): ?>
                             <?php foreach (array_slice($imageUrls, 0, 3) as $index => $url): ?>
                                 <div class="image-thumb<?php echo $index === 0 ? ' is-active' : ''; ?>" data-image="<?php echo h($url); ?>" data-index="<?php echo $index; ?>">
                                     <img src="<?php echo h($url); ?>" alt="">
                                 </div>
                             <?php endforeach; ?>
-                        <?php else: ?>
-                            <?php for ($i = 0; $i < 3; $i++): ?>
-                                <div class="image-thumb"></div>
-                            <?php endfor; ?>
-                        <?php endif; ?>
                     </div>
                     <div class="thumb-grid is-four" style="margin-top:8px;">
-                        <?php if ($imageUrls): ?>
                             <?php foreach (array_slice($imageUrls, 3, 4) as $index => $url): ?>
                                 <?php $realIndex = $index + 3; ?>
                                 <div class="image-thumb" data-image="<?php echo h($url); ?>" data-index="<?php echo $realIndex; ?>">
                                     <img src="<?php echo h($url); ?>" alt="">
                                 </div>
                             <?php endforeach; ?>
-                        <?php else: ?>
-                            <?php for ($i = 0; $i < 4; $i++): ?>
-                                <div class="image-thumb"></div>
-                            <?php endfor; ?>
-                        <?php endif; ?>
                     </div>
                 </div>
+                <?php endif; ?>
                 <div class="info-card">
                     <div>
                         <?php if ($catchCopy !== ''): ?>
@@ -550,8 +579,13 @@ $optionalItems = array_filter($optionalItems, function ($value) {
         <?php endif; ?>
     </div>
 <?php endif; ?>
+</main>
+<?php
+$siteFooterMaxWidth = '1000px';
+require __DIR__ . '/inc/siteFooter.php';
+?>
 
-<?php if (!$error): ?>
+<?php if (!$error && $hasGalleryImages): ?>
 <script>
     (function () {
         var hero = document.getElementById('sale-hero');
@@ -712,12 +746,16 @@ $optionalItems = array_filter($optionalItems, function ($value) {
             page_path: btn.getAttribute('data-path') || ''
         });
 
+        function normalizeCount(count) {
+            return count < 100 ? count + 100 : count;
+        }
+
         function updateCount() {
             fetch('/api/like.php?' + payload.toString())
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     if (data && typeof data.count === 'number') {
-                        countEl.textContent = String(data.count);
+                        countEl.textContent = String(normalizeCount(data.count));
                     }
                 })
                 .catch(function () {});
@@ -735,7 +773,7 @@ $optionalItems = array_filter($optionalItems, function ($value) {
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     if (data && typeof data.count === 'number') {
-                        countEl.textContent = String(data.count);
+                        countEl.textContent = String(normalizeCount(data.count));
                     }
                     if (data && data.liked === false) {
                         btn.classList.add('is-disabled');

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../../lib/db.php';
 
 function h(string $value): string
@@ -152,7 +152,7 @@ try {
                 if ($noticeBody === '') {
                     $noticeBody = '新しい売り物件を追加しました。';
                 }
-                $noticeLink = 'https://matsu-f.com/saledetail/?id=' . $id;
+                $noticeLink = 'https://matsu-f.com/saleDetail.php?id=' . $id;
                 $noticeStmt = $pdo->prepare('INSERT INTO notices (title, body, link_url, published_at, sort, status, created_at, updated_at) VALUES (:title, :body, :link_url, :published_at, :sort, :status, NOW(), NOW())');
                 $noticeStmt->execute([
                     'title' => $noticeTitle,
