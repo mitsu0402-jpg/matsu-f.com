@@ -52,7 +52,7 @@ try {
         ':page_path' => $pagePath,
     ]);
     $count = (int)$countStmt->fetchColumn();
-    $baseCount = 100;
+    $baseCount = 46;
 
     json_response([
         'ok' => true,

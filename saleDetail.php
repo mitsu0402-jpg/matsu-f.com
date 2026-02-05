@@ -36,6 +36,36 @@ function short_text(string $value, int $maxLength): string
     return substr($value, 0, $maxLength) . '...';
 }
 
+function send_text_mail(array $toList, string $subject, string $body): bool
+{
+    $headers = [
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+        'From: no-reply@matsu-f.com',
+    ];
+    $headerText = implode("\r\n", $headers);
+
+    $allOk = true;
+    foreach ($toList as $to) {
+        $to = trim((string)$to);
+        if ($to === '') {
+            continue;
+        }
+        if (function_exists('mb_send_mail')) {
+            $ok = mb_send_mail($to, $subject, $body, $headerText);
+        } else {
+            $encodedSubject = function_exists('mb_encode_mimeheader')
+                ? mb_encode_mimeheader($subject, 'UTF-8')
+                : $subject;
+            $ok = mail($to, $encodedSubject, $body, $headerText);
+        }
+        if (!$ok) {
+            $allOk = false;
+        }
+    }
+    return $allOk;
+}
+
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
 $row = [];
 $images = [];
@@ -96,6 +126,85 @@ $displayLocation = (string)($row['location'] ?? '');
 $displayTransaction = (string)($row['transaction_type'] ?? '');
 $catchCopy = short_text((string)($row['catchCopy'] ?? ''), 20);
 $description = trim((string)($row['setsumei'] ?? ''));
+$inquiryErrors = [];
+$inquirySuccess = false;
+$inquiryMailTo = ['info@matsu-f.com', 'mitsu0402@gmail.com'];
+$inquiryTimeOptions = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+$inquiryDateOptions = [];
+$baseDate = new DateTimeImmutable('today', new DateTimeZone('Asia/Tokyo'));
+for ($i = 0; $i < 14; $i++) {
+    $inquiryDateOptions[] = $baseDate->modify('+' . $i . ' day')->format('Y-m-d');
+}
+$inquiryValues = [
+    'property_name' => (string)($row['name'] ?? ''),
+    'preferred_date' => '',
+    'preferred_time' => '',
+    'name' => '',
+    'contact' => '',
+];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string)($_POST['form_type'] ?? '') === 'sale_inquiry' && $error === '') {
+    $inquiryValues['preferred_date'] = trim((string)($_POST['preferred_date'] ?? ''));
+    $inquiryValues['preferred_time'] = trim((string)($_POST['preferred_time'] ?? ''));
+    $inquiryValues['name'] = trim((string)($_POST['name'] ?? ''));
+    $inquiryValues['contact'] = trim((string)($_POST['contact'] ?? ''));
+
+    if (!in_array($inquiryValues['preferred_date'], $inquiryDateOptions, true)) {
+        $inquiryErrors[] = '希望日を選択してください。';
+    }
+    if (!in_array($inquiryValues['preferred_time'], $inquiryTimeOptions, true)) {
+        $inquiryErrors[] = '希望時間を選択してください。';
+    }
+    if ($inquiryValues['name'] === '') {
+        $inquiryErrors[] = 'お名前を入力してください。';
+    }
+    if ($inquiryValues['contact'] === '') {
+        $inquiryErrors[] = '連絡先を入力してください。';
+    }
+
+    if (!$inquiryErrors) {
+        try {
+            $detailUrl = 'https://matsu-f.com/saleDetail.php?id=' . urlencode((string)$id);
+            $inquiryNote = implode("\n", [
+                '【売買物件のお問い合わせ】',
+                '物件ID: ' . (string)$id,
+                '物件名: ' . (string)($row['name'] ?? ''),
+                '希望日時: ' . $inquiryValues['preferred_date'] . ' ' . $inquiryValues['preferred_time'],
+                '物件URL: ' . $detailUrl,
+            ]);
+            $saveStmt = $pdo->prepare(
+                'INSERT INTO contact_requests (name, contact, request_type, note)
+                 VALUES (:name, :contact, :request_type, :note)'
+            );
+            $saveStmt->execute([
+                ':name' => $inquiryValues['name'],
+                ':contact' => $inquiryValues['contact'],
+                ':request_type' => 'buy',
+                ':note' => $inquiryNote,
+            ]);
+            $mailSubject = '【松永不動産】売買物件のお問い合わせ';
+            $mailBody = implode("\n", [
+                '売買物件のお問い合わせがありました。',
+                '',
+                '物件名: ' . (string)($row['name'] ?? ''),
+                '希望日時: ' . $inquiryValues['preferred_date'] . ' ' . $inquiryValues['preferred_time'],
+                'お名前: ' . $inquiryValues['name'],
+                '連絡先: ' . $inquiryValues['contact'],
+                '詳細ページ: ' . $detailUrl,
+            ]);
+            if (!send_text_mail($inquiryMailTo, $mailSubject, $mailBody)) {
+                $inquiryErrors[] = '送信内容は保存されましたが、メール通知に失敗しました。';
+            } else {
+                $inquirySuccess = true;
+                $inquiryValues['preferred_date'] = '';
+                $inquiryValues['preferred_time'] = '';
+                $inquiryValues['name'] = '';
+                $inquiryValues['contact'] = '';
+            }
+        } catch (Throwable $e) {
+            $inquiryErrors[] = '送信に失敗しました。時間をおいて再度お試しください。';
+        }
+    }
+}
 $optionalItems = [
     '種別' => (string)($row['cate'] ?? ''),
     '間取り' => (string)($row['floor_plan'] ?? ''),
@@ -450,6 +559,82 @@ $optionalItems = array_filter($optionalItems, function ($value) {
             color: #5a4f47;
         }
 
+        .inquiry-section {
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            padding: 16px;
+            margin-top: 50px;
+        }
+
+        .inquiry-title {
+            margin: 0 0 10px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .inquiry-message {
+            margin: 0 0 12px;
+            font-size: 13px;
+            color: #b02a2a;
+        }
+
+        .inquiry-message.is-success {
+            color: #1f7a2f;
+        }
+
+        .inquiry-form {
+            display: grid;
+            gap: 12px;
+        }
+
+        .inquiry-field {
+            display: grid;
+            gap: 6px;
+        }
+
+        .inquiry-field-label {
+            font-size: 13px;
+            color: #5a4f47;
+        }
+
+        .inquiry-datetime {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 8px;
+        }
+
+        .inquiry-input,
+        .inquiry-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d6d0c7;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            background: #fff;
+        }
+
+        .inquiry-input[readonly] {
+            background: #f5f5f5;
+        }
+
+        .inquiry-submit {
+            justify-self: center;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 999px;
+            background: #15C0D0;
+            color: #ffffff;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .inquiry-submit:hover {
+            opacity: 0.9;
+        }
+
         @media (max-width: 900px) {
 
             .panel-row {
@@ -457,6 +642,10 @@ $optionalItems = array_filter($optionalItems, function ($value) {
             }
 
             .optional-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .inquiry-datetime {
                 grid-template-columns: 1fr;
             }
         }
@@ -491,7 +680,7 @@ require __DIR__ . '/inc/siteHeader.php';
                 data-path="<?php echo h($likePagePath); ?>"
                 aria-label="いいね">
                 <img class="like-icon" src="/image/btn_iine.png" alt="">
-                いいね！ <span id="sale-like-count">100</span>
+                いいね！ <span id="sale-like-count">46</span>
             </button>
         </div>
         <div class="hero-wrap">
@@ -577,6 +766,70 @@ require __DIR__ . '/inc/siteHeader.php';
                 </div>
             </section>
         <?php endif; ?>
+        <section class="inquiry-section">
+            <h2 class="inquiry-title">簡単内覧予約</h2>
+            <?php if ($inquirySuccess): ?>
+                <p class="inquiry-message is-success">送信ありがとうございました。担当よりご連絡いたします。</p>
+            <?php elseif ($inquiryErrors): ?>
+                <p class="inquiry-message"><?php echo h(implode(' ', $inquiryErrors)); ?></p>
+            <?php endif; ?>
+            <form class="inquiry-form" method="post" action="">
+                <input type="hidden" name="form_type" value="sale_inquiry">
+                <div class="inquiry-field">
+                    <label class="inquiry-field-label" for="sale-inquiry-property">物件名</label>
+                    <input
+                        class="inquiry-input"
+                        id="sale-inquiry-property"
+                        name="property_name"
+                        type="text"
+                        value="<?php echo h((string)$inquiryValues['property_name']); ?>"
+                        required
+                        readonly>
+                </div>
+                <div class="inquiry-field">
+                    <label class="inquiry-field-label">希望日時</label>
+                    <div class="inquiry-datetime">
+                        <select class="inquiry-select" name="preferred_date" aria-label="希望日" required>
+                            <option value="">希望日を選択</option>
+                            <?php foreach ($inquiryDateOptions as $dateOption): ?>
+                                <option value="<?php echo h($dateOption); ?>" <?php echo $inquiryValues['preferred_date'] === $dateOption ? 'selected' : ''; ?>>
+                                    <?php echo h($dateOption); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select class="inquiry-select" name="preferred_time" aria-label="希望時間" required>
+                            <option value="">時間を選択</option>
+                            <?php foreach ($inquiryTimeOptions as $timeOption): ?>
+                                <option value="<?php echo h($timeOption); ?>" <?php echo $inquiryValues['preferred_time'] === $timeOption ? 'selected' : ''; ?>>
+                                    <?php echo h($timeOption); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="inquiry-field">
+                    <label class="inquiry-field-label" for="sale-inquiry-name">お名前</label>
+                    <input
+                        class="inquiry-input"
+                        id="sale-inquiry-name"
+                        name="name"
+                        type="text"
+                        value="<?php echo h((string)$inquiryValues['name']); ?>"
+                        required>
+                </div>
+                <div class="inquiry-field">
+                    <label class="inquiry-field-label" for="sale-inquiry-contact">連絡先（TELかメールアドレス）</label>
+                    <input
+                        class="inquiry-input"
+                        id="sale-inquiry-contact"
+                        name="contact"
+                        type="text"
+                        value="<?php echo h((string)$inquiryValues['contact']); ?>"
+                        required>
+                </div>
+                <button class="inquiry-submit" type="submit">送信</button>
+            </form>
+        </section>
     </div>
 <?php endif; ?>
 </main>
@@ -746,16 +999,12 @@ require __DIR__ . '/inc/siteFooter.php';
             page_path: btn.getAttribute('data-path') || ''
         });
 
-        function normalizeCount(count) {
-            return count < 100 ? count + 100 : count;
-        }
-
         function updateCount() {
             fetch('/api/like.php?' + payload.toString())
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     if (data && typeof data.count === 'number') {
-                        countEl.textContent = String(normalizeCount(data.count));
+                        countEl.textContent = String(data.count);
                     }
                 })
                 .catch(function () {});
@@ -773,7 +1022,7 @@ require __DIR__ . '/inc/siteFooter.php';
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     if (data && typeof data.count === 'number') {
-                        countEl.textContent = String(normalizeCount(data.count));
+                        countEl.textContent = String(data.count);
                     }
                     if (data && data.liked === false) {
                         btn.classList.add('is-disabled');

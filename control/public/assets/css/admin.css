@@ -131,6 +131,7 @@ body.admin {
 .nav-card-6 { background-image: url("../img/btn06.png"); }
 .nav-card-7 { background-image: url("../img/btn09.png"); }
 .nav-card-8 { background-image: url("../img/btn08.png"); }
+.nav-card-9 { background-image: url("../img/btn10.png"); }
 
 
 .content {
@@ -140,6 +141,28 @@ body.admin {
 h2 {
   margin: 12px 0 16px;
   font-size: 22px;
+}
+
+.content-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.content-head h2 {
+  margin-bottom: 0;
+}
+
+.header-link-btn {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 10px;
+  text-decoration: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 form {
@@ -307,6 +330,11 @@ tr:last-child td {
 
   .content {
     padding: 0 16px 32px;
+  }
+
+  .content-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .table-scroll th:nth-child(3),

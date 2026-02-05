@@ -12,6 +12,7 @@ $routes = [
     'area_list' => __DIR__ . '/../views/area/list.php',
     'area_edit' => __DIR__ . '/../views/area/edit.php',
     'news_list' => __DIR__ . '/../views/news/list.php',
+    'contact_list' => __DIR__ . '/../views/contact/list.php',
     'settings' => __DIR__ . '/../views/settings/index.php',
 ];
 
@@ -26,6 +27,7 @@ $titleMap = [
     'area_list' => 'エリア一覧',
     'area_edit' => 'エリア編集',
     'news_list' => 'お知らせ一覧',
+    'contact_list' => 'お問い合わせ一覧',
     'settings' => '設定',
 ];
 
@@ -56,10 +58,16 @@ $documentTitle = 'コントロールパネル ' . $pageTitle;
     <a class="nav-card nav-card-5<?php echo $currentPage === 'rent_list' ? ' is-current' : ''; ?>" href="index.php?page=rent_list" <?php echo $currentPage === 'rent_list' ? 'aria-current="page"' : ''; ?>>賃貸物件一覧</a>
     <a class="nav-card nav-card-6<?php echo $currentPage === 'area_list' ? ' is-current' : ''; ?>" href="index.php?page=area_list" <?php echo $currentPage === 'area_list' ? 'aria-current="page"' : ''; ?>>エリア一覧</a>
     <a class="nav-card nav-card-8<?php echo $currentPage === 'settings' ? ' is-current' : ''; ?>" href="index.php?page=settings" <?php echo $currentPage === 'settings' ? 'aria-current="page"' : ''; ?>>設定</a>
+    <a class="nav-card nav-card-9<?php echo $currentPage === 'contact_list' ? ' is-current' : ''; ?>" href="index.php?page=contact_list" <?php echo $currentPage === 'contact_list' ? 'aria-current="page"' : ''; ?>>お問い合わせ一覧</a>
   </nav>
 
   <main class="content">
-    <h2><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></h2>
+    <div class="content-head">
+      <h2><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></h2>
+      <?php if ($currentPage === 'contact_list'): ?>
+        <a class="header-link-btn" href="https://tools.heteml.jp/" target="_blank" rel="noopener noreferrer">メーラーへログインする</a>
+      <?php endif; ?>
+    </div>
     <?php if (is_file($viewFile)): ?>
       <?php include $viewFile; ?>
     <?php else: ?>

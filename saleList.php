@@ -34,7 +34,7 @@ try {
 <html lang="ja">
     <head>
     <meta charset="UTF-8">
-    <title>売り物件一覧</title>
+    <title>売り物件一覧 松永不動産</title>
     <style>
         <?php require __DIR__ . '/inc/siteHeaderFooterCss.php'; ?>
         :root {
@@ -49,6 +49,11 @@ try {
             font-family: Monda, Helvetica, Arial, Sans-Serif, serif;
             background: #ffffff;
             color: #1b1b1b;
+        }
+
+        .site-main {
+            width: 90%;
+            margin: 0 auto;
         }
 
         .page-shell {
@@ -148,6 +153,10 @@ try {
                 --card-gap: 8px;
             }
 
+            .site-main {
+                width: 100%;
+            }
+
             .page-shell {
                 padding: 1%;
             }
@@ -183,7 +192,11 @@ require __DIR__ . '/inc/siteHeader.php';
     <?php elseif (!$rows): ?>
         
     <?php else: ?>
-<h2 class="osusume-title">物件検索</h2>
+        <?php if ($mapsApiKey !== ''): ?>
+        <h2 class="osusume-title">物件マップ</h2>
+        <div id="sale-map" class="osusume-map"></div>
+        <?php endif; ?>
+<h2 class="osusume-title" style="margin-top:100px">物件検索</h2>
         <div class="osusume-grid">
             <?php $index = 0; ?>
             <?php foreach ($rows as $row): ?>
@@ -208,10 +221,6 @@ require __DIR__ . '/inc/siteHeader.php';
                 </a>
             <?php endforeach; ?>
         </div>
-        <?php if ($mapsApiKey !== ''): ?>
-        <h2 class="osusume-title" style="margin-top:100px">物件マップ</h2>
-        <div id="sale-map" class="osusume-map"></div>
-        <?php endif; ?>
     <?php endif; ?>
     <?php if ($rows && $mapsApiKey !== ''): ?>
     <?php
@@ -250,11 +259,19 @@ require __DIR__ . '/inc/siteHeader.php';
             markers.forEach(function (item) {
                 var pos = { lat: item.lat, lng: item.lng };
                 var labelText = item.name || item.location || '';
-                new google.maps.Marker({
+                var marker = new google.maps.Marker({
                     position: pos,
                     map: map,
                     title: labelText,
                     label: labelText
+                });
+                marker.addListener('click', function () {
+                    var detailUrl = 'https://matsu-f.com/saleDetail.php?id=' + encodeURIComponent(String(item.id));
+                    if (window.top) {
+                        window.top.location.href = detailUrl;
+                        return;
+                    }
+                    window.location.href = detailUrl;
                 });
                 bounds.extend(pos);
             });

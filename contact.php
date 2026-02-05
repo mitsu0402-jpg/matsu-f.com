@@ -23,6 +23,17 @@ $values = [
     'note' => '',
 ];
 
+if (!$showThanks && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $prefillRequest = (string)($_GET['request'] ?? '');
+    $prefillNote = trim((string)($_GET['note'] ?? ''));
+    if (in_array($prefillRequest, ['sell', 'rent', 'buy', 'borrow', 'consult'], true)) {
+        $values['request'] = $prefillRequest;
+    }
+    if ($prefillNote !== '') {
+        $values['note'] = $prefillNote;
+    }
+}
+
 if (!$showThanks && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $values['name'] = trim((string)($_POST['name'] ?? ''));
     $values['contact'] = trim((string)($_POST['contact'] ?? ''));
