@@ -13,6 +13,28 @@ function h(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
+function send_text_mail(string $to, string $subject, string $body, array $bcc = []): bool
+{
+    $headers = [
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+        'From: no-reply@matsu-f.com',
+    ];
+    if ($bcc) {
+        $headers[] = 'Bcc: ' . implode(', ', $bcc);
+    }
+    $headerText = implode("\r\n", $headers);
+
+    if (function_exists('mb_send_mail')) {
+        return mb_send_mail($to, $subject, $body, $headerText);
+    }
+
+    $encodedSubject = function_exists('mb_encode_mimeheader')
+        ? mb_encode_mimeheader($subject, 'UTF-8')
+        : $subject;
+    return mail($to, $encodedSubject, $body, $headerText);
+}
+
 $errors = [];
 $showThanks = isset($_GET['thanks']) && $_GET['thanks'] === '1';
 
@@ -63,6 +85,20 @@ if (!$showThanks && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':request_type' => $values['request'],
                 ':note' => $values['note'] !== '' ? $values['note'] : null,
             ]);
+
+            $mailSubject = '【松永不動産】お問い合わせがありました';
+            $mailBody = implode("\n", [
+                'お問い合わせがありました。',
+                '',
+                'お名前: ' . $values['name'],
+                '連絡先: ' . $values['contact'],
+                'ご要望: ' . $values['request'],
+                '備考: ' . ($values['note'] !== '' ? $values['note'] : '-'),
+                '',
+                'ダッシュボード: https://matsu-f.com/control/public/index.php?page=contact_list',
+            ]);
+            send_text_mail('info@matsu-f.com', $mailSubject, $mailBody, ['mitsu0402@gmail.com']);
+
             header('Location: https://matsu-f.com/thanks/', true, 303);
             exit;
         } catch (Throwable $e) {

@@ -278,6 +278,9 @@ try {
         <?php endforeach; ?>
       </tbody>
     </table>
+    <div style="margin-top:12px;">
+      <button type="submit" onclick="return confirm('選択した画像を削除しますか？');">選択画像を削除</button>
+    </div>
     <script>
       (function () {
         const table = document.getElementById('sale-image-table');

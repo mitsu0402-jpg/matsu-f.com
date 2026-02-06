@@ -51,7 +51,7 @@ try {
          LIMIT 1) AS image_path
         FROM `sale_properties`
         WHERE `status` = 1
-        ORDER BY `sort` DESC, id DESC
+        ORDER BY CAST(sort AS UNSIGNED) ASC, id ASC
         LIMIT 6';
     $stmt = $pdo->prepare($sql);
     $stmt->execute();

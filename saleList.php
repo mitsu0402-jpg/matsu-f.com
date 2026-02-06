@@ -19,11 +19,11 @@ try {
          WHERE property_type = \'sale\'
            AND status = 1
            AND property_id = sale_properties.id
-         ORDER BY sort ASC, id ASC
-         LIMIT 1) AS image_path
+          ORDER BY sort ASC, id ASC
+          LIMIT 1) AS image_path
         FROM `sale_properties`
         WHERE `status` = 1
-        ORDER BY lastUpdateDate DESC, id DESC';
+        ORDER BY CAST(sort AS UNSIGNED) ASC, id ASC';
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
