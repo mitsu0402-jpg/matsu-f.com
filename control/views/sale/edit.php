@@ -83,12 +83,14 @@ $defaults['sort'] = 0;
 $defaults['osusume'] = 0;
 $values = $defaults;
 $message = '';
+$messageTitle = '';
 $error = '';
 $imageRows = [];
 $googleConfig = require __DIR__ . '/../../config/google.php';
 $mapsApiKey = trim((string)($googleConfig['maps_js_api_key'] ?? ''));
 
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+$copyId = filter_input(INPUT_GET, 'copy_id', FILTER_VALIDATE_INT);
 
 try {
     $pdo = getPDO();
@@ -100,13 +102,12 @@ try {
             $values[$field] = post_value($field);
         }
 
-        $values['parking'] = post_bool('parking');
-        $values['pets_allowed'] = post_bool('pets_allowed');
-        $values['balcony_garden'] = post_bool('balcony_garden');
         $values['osusume'] = post_bool('osusume');
 
         $values['status'] = (int)($values['status'] !== '' ? $values['status'] : 1);
-        $values['shinchiku'] = (int)($values['shinchiku'] !== '' ? $values['shinchiku'] : 0);
+        if ($values['shinchiku'] !== '' && $values['shinchiku'] !== '非表示') {
+            $values['shinchiku'] = (int)$values['shinchiku'];
+        }
         $values['sort'] = (int)($values['sort'] !== '' ? $values['sort'] : 0);
         $values['osusume'] = (int)($values['osusume'] !== '' ? $values['osusume'] : 0);
 
@@ -124,6 +125,7 @@ try {
             $params['id'] = $id;
             $stmt->execute($params);
             $message = '更新しました。';
+            $messageTitle = (string)$values['name'];
 
             if ((int)$values['status'] === 0) {
                 $noticeStmt = $pdo->prepare('UPDATE notices SET status = 0, updated_at = NOW() WHERE title = :title AND body = :body');
@@ -145,6 +147,7 @@ try {
             $stmt->execute($params);
             $id = (int)$pdo->lastInsertId();
             $message = '登録しました。';
+            $messageTitle = (string)$values['name'];
 
             if ((int)$values['status'] === 1) {
                 $noticeTitle = '売り物件を追加しました';
@@ -235,6 +238,14 @@ try {
         $imgStmt = $pdo->prepare("SELECT id, file_path, sort FROM property_images WHERE property_type = 'sale' AND property_id = :id ORDER BY sort ASC, id ASC");
         $imgStmt->execute(['id' => $id]);
         $imageRows = $imgStmt->fetchAll(PDO::FETCH_ASSOC);
+    } elseif ($copyId) {
+        $stmt = $pdo->prepare('SELECT * FROM `sale_properties` WHERE `id` = :id');
+        $stmt->execute(['id' => $copyId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            unset($row['id']);
+            $values = array_merge($values, $row);
+        }
     }
 } catch (Throwable $e) {
     $error = 'エラーが発生しました。' . $e->getMessage();
@@ -242,7 +253,32 @@ try {
 ?>
 
 <?php if ($message): ?>
-  <p><?php echo h($message); ?></p>
+  <?php
+  $noticeTitle = trim($messageTitle);
+  $noticeText = $noticeTitle !== '' ? $noticeTitle . 'の変更が成功しました' : '変更が成功しました';
+  ?>
+  <div id="sale-edit-notice" class="notice-success" style="position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 9999; margin: 0; padding: 10px 14px; background: rgba(248, 215, 218, 0.95); color: #7b1b1b; border: 1px solid #f2b6bd; border-radius: 999px; box-shadow: 0 10px 24px rgba(123, 27, 27, 0.18); opacity: 0; transition: opacity 0.6s ease;">
+    <?php echo h($noticeText); ?>
+  </div>
+  <script>
+    (function () {
+      var notice = document.getElementById('sale-edit-notice');
+      if (!notice) {
+        return;
+      }
+      window.setTimeout(function () {
+        notice.style.opacity = '1';
+      }, 50);
+      window.setTimeout(function () {
+        notice.style.opacity = '0';
+      }, 2400);
+      window.setTimeout(function () {
+        if (notice && notice.parentNode) {
+          notice.parentNode.removeChild(notice);
+        }
+      }, 3200);
+    })();
+  </script>
 <?php endif; ?>
 <?php if ($error): ?>
   <p><?php echo h($error); ?></p>
@@ -343,7 +379,7 @@ try {
     <label>種別
       <select name="cate">
         <?php
-        $saleCateOptions = ['一戸建て', '土地', 'マンション', 'アパート', '駐車場', '店舗', '事務所', 'その他'];
+        $saleCateOptions = ['非表示', '一戸建て', '土地', 'マンション', 'アパート', '駐車場', '店舗', '事務所', 'その他'];
         foreach ($saleCateOptions as $option):
           $selected = ((string)$values['cate'] === $option) ? 'selected' : '';
         ?>
@@ -362,7 +398,7 @@ try {
     <label>取引態様
       <select name="transaction_type">
         <?php
-        $transactionOptions = ['一般媒介', '専任媒介', '専属専任媒介', '売主', '代理', '仲介', 'その他'];
+        $transactionOptions = ['非表示', '一般媒介', '専任媒介', '専属専任媒介', '売主', '代理', '仲介', 'その他'];
         foreach ($transactionOptions as $option):
           $selected = ((string)$values['transaction_type'] === $option) ? 'selected' : '';
         ?>
@@ -375,7 +411,7 @@ try {
     <label>間取り
       <select name="floor_plan">
         <?php
-        $floorPlanOptions = ['1K', '1DK', '1LDK', '2K', '2DK', '2LDK', '3K', '3DK', '3LDK', '4K', '4DK', '4LDK', '5K', '5DK', '5LDK', '6K', '6DK', '6LDK', 'その他'];
+        $floorPlanOptions = ['非表示', '1K', '1DK', '1LDK', '2K', '2DK', '2LDK', '3K', '3DK', '3LDK', '4K', '4DK', '4LDK', '5K', '5DK', '5LDK', '6K', '6DK', '6LDK', 'その他'];
         foreach ($floorPlanOptions as $option):
           $selected = ((string)$values['floor_plan'] === $option) ? 'selected' : '';
         ?>
@@ -390,7 +426,7 @@ try {
     <label>築年数
       <select name="age">
         <?php
-        $ageOptions = ['新築', '1年', '2年', '3年', '4年', '5年', '6年', '7年', '8年', '9年', '10年', '15年', '20年', '25年', '30年', '35年', '40年', '45年', '50年', '不明'];
+        $ageOptions = ['非表示', '新築', '1年', '2年', '3年', '4年', '5年', '6年', '7年', '8年', '9年', '10年', '15年', '20年', '25年', '30年', '35年', '40年', '45年', '50年', '不明'];
         foreach ($ageOptions as $option):
           $selected = ((string)$values['age'] === $option) ? 'selected' : '';
         ?>
@@ -403,8 +439,9 @@ try {
   <div>
     <label>新築
       <select name="shinchiku">
-        <option value="1" <?php echo ((int)$values['shinchiku'] === 1) ? 'selected' : ''; ?>>新築</option>
-        <option value="0" <?php echo ((int)$values['shinchiku'] === 0) ? 'selected' : ''; ?>>中古</option>
+        <option value="非表示" <?php echo ((string)$values['shinchiku'] === '非表示') ? 'selected' : ''; ?>>非表示</option>
+        <option value="1" <?php echo ((string)$values['shinchiku'] === '1') ? 'selected' : ''; ?>>新築</option>
+        <option value="0" <?php echo ((string)$values['shinchiku'] === '0') ? 'selected' : ''; ?>>中古</option>
       </select>
     </label>
   </div>
@@ -412,7 +449,7 @@ try {
     <label>構造
       <select name="structure">
         <?php
-        $structureOptions = ['木造', '軽量鉄骨', '鉄骨造', '鉄筋コンクリート', '鉄骨鉄筋コンクリート', 'その他'];
+        $structureOptions = ['非表示', '木造', '軽量鉄骨', '鉄骨造', '鉄筋コンクリート', '鉄骨鉄筋コンクリート', 'その他'];
         foreach ($structureOptions as $option):
           $selected = ((string)$values['structure'] === $option) ? 'selected' : '';
         ?>
@@ -425,7 +462,7 @@ try {
     <label>階数
       <select name="floors">
         <?php
-        $floorOptions = ['1階', '2階', '3階', '4階', '5階', '6階', '7階', '8階', '9階', '10階', '11階以上', '地下1階', '地下2階', '不明'];
+        $floorOptions = ['非表示', '1階', '2階', '3階', '4階', '5階', '6階', '7階', '8階', '9階', '10階', '11階以上', '地下1階', '地下2階', '不明'];
         foreach ($floorOptions as $option):
           $selected = ((string)$values['floors'] === $option) ? 'selected' : '';
         ?>
@@ -438,7 +475,7 @@ try {
     <label>方位
       <select name="direction">
         <?php
-        $directionOptions = ['北', '北東', '東', '南東', '南', '南西', '西', '北西', '不明', 'その他'];
+        $directionOptions = ['非表示', '北', '北東', '東', '南東', '南', '南西', '西', '北西', '不明', 'その他'];
         foreach ($directionOptions as $option):
           $selected = ((string)$values['direction'] === $option) ? 'selected' : '';
         ?>
@@ -450,6 +487,7 @@ try {
   <div>
     <label>バルコニー・庭
       <select name="balcony_garden">
+        <option value="非表示" <?php echo ((string)$values['balcony_garden'] === '非表示') ? 'selected' : ''; ?>>非表示</option>
         <option value="1" <?php echo ((string)$values['balcony_garden'] === '1') ? 'selected' : ''; ?>>有り</option>
         <option value="0" <?php echo ((string)$values['balcony_garden'] === '0') ? 'selected' : ''; ?>>無し</option>
       </select>
@@ -458,6 +496,7 @@ try {
   <div>
     <label>駐車場
       <select name="parking">
+        <option value="非表示" <?php echo ((string)$values['parking'] === '非表示') ? 'selected' : ''; ?>>非表示</option>
         <option value="1" <?php echo ((string)$values['parking'] === '1') ? 'selected' : ''; ?>>有り</option>
         <option value="0" <?php echo ((string)$values['parking'] === '0') ? 'selected' : ''; ?>>無し</option>
       </select>
@@ -473,7 +512,7 @@ try {
     <label>土地権利
       <select name="land_rights">
         <?php
-        $landRightsOptions = ['所有権', '借地権', '定期借地権', '地上権', '賃借権', 'その他'];
+        $landRightsOptions = ['非表示', '所有権', '借地権', '定期借地権', '地上権', '賃借権', 'その他'];
         foreach ($landRightsOptions as $option):
           $selected = ((string)$values['land_rights'] === $option) ? 'selected' : '';
         ?>
@@ -486,7 +525,7 @@ try {
     <label>都市計画
       <select name="urban_planning">
         <?php
-        $urbanPlanningOptions = ['市街化区域', '市街化調整区域', '非線引区域', '準都市計画区域', '区域外', 'その他'];
+        $urbanPlanningOptions = ['非表示', '市街化区域', '市街化調整区域', '非線引区域', '準都市計画区域', '区域外', 'その他'];
         foreach ($urbanPlanningOptions as $option):
           $selected = ((string)$values['urban_planning'] === $option) ? 'selected' : '';
         ?>
@@ -500,6 +539,7 @@ try {
       <select name="zoning">
         <?php
         $zoningOptions = [
+          '非表示',
           '無指定',
           '第一種低層住居専用地域',
           '第二種低層住居専用地域',
@@ -527,11 +567,8 @@ try {
     <label>建ぺい率
       <select name="building_coverage_ratio">
         <?php
-        $coverageOptions = ['ー', '40%', '50%', '60%', '70%', '80%', '90%', '100%'];
+        $coverageOptions = ['非表示', 'ー', '40%', '50%', '60%', '70%', '80%', '90%', '100%'];
         $coverageValue = (string)$values['building_coverage_ratio'];
-        if ($coverageValue === '') {
-          $coverageValue = '60%';
-        }
         foreach ($coverageOptions as $option):
           $selected = ($coverageValue === $option) ? 'selected' : '';
         ?>
@@ -544,11 +581,8 @@ try {
     <label>容積率
       <select name="floor_area_ratio">
         <?php
-        $floorAreaOptions = ['ー', '60%', '80%', '100%', '120%', '150%', '160%', '200%', '250%', '300%', '400%', '500%', '600%'];
+        $floorAreaOptions = ['非表示', 'ー', '60%', '80%', '100%', '120%', '150%', '160%', '200%', '250%', '300%', '400%', '500%', '600%'];
         $floorAreaValue = (string)$values['floor_area_ratio'];
-        if ($floorAreaValue === '') {
-          $floorAreaValue = '60%';
-        }
         foreach ($floorAreaOptions as $option):
           $selected = ($floorAreaValue === $option) ? 'selected' : '';
         ?>
@@ -571,7 +605,7 @@ try {
     <label>現況
       <select name="current_status">
         <?php
-        $currentStatusOptions = ['空室', '居住中', '賃貸中', '更地', '建築中', '完成済', 'その他'];
+        $currentStatusOptions = ['非表示', '空室', '居住中', '賃貸中', '更地', '建築中', '完成済', 'その他'];
         foreach ($currentStatusOptions as $option):
           $selected = ((string)$values['current_status'] === $option) ? 'selected' : '';
         ?>
@@ -584,7 +618,7 @@ try {
     <label>地目
       <select name="land_category">
         <?php
-        $landCategoryOptions = ['宅地', '田', '畑', '山林', '雑種地', '原野', 'その他'];
+        $landCategoryOptions = ['非表示', '宅地', '田', '畑', '山林', '雑種地', '原野', 'その他'];
         foreach ($landCategoryOptions as $option):
           $selected = ((string)$values['land_category'] === $option) ? 'selected' : '';
         ?>
@@ -598,6 +632,7 @@ try {
   <div>
     <label>ペット可否
       <select name="pets_allowed">
+        <option value="非表示" <?php echo ((string)$values['pets_allowed'] === '非表示') ? 'selected' : ''; ?>>非表示</option>
         <option value="1" <?php echo ((string)$values['pets_allowed'] === '1') ? 'selected' : ''; ?>>可</option>
         <option value="0" <?php echo ((string)$values['pets_allowed'] === '0') ? 'selected' : ''; ?>>不可</option>
       </select>

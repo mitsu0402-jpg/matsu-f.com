@@ -128,31 +128,32 @@
     text-align: center;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 767px) {
     .site-header {
         min-height: 400px;
     }
 
     .site-header-inner {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: row;
+        align-items: center;
         padding: 14px 14px 0;
     }
 
     .site-logo {
-        font-size: 24px;
+        font-size: 22px;
     }
 
     .site-logo img {
-        width: 56px;
-        height: 56px;
+        width: 48px;
+        height: 48px;
     }
 
     .menu-toggle {
         display: inline-flex;
-        position: absolute;
-        top: 14px;
-        right: 14px;
+        position: relative;
+        top: auto;
+        right: auto;
+        margin-left: auto;
     }
 
     .site-nav {
@@ -177,7 +178,9 @@
     }
 
     .site-hero-title {
-        margin-top: 18px;
+        margin: 18px auto 0;
         font-size: 24px;
+        color: #ffffff;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
     }
 }

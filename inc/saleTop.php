@@ -149,13 +149,7 @@ try {
             color: #545454;
         }
 
-        @media (max-width: 900px) {
-            .osusume-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-
-        @media (max-width: 600px) {
+        @media (max-width: 767px) {
             .osusume-grid {
                 grid-template-columns: repeat(1, minmax(0, 1fr));
             }

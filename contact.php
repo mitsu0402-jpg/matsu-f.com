@@ -111,6 +111,7 @@ if (!$showThanks && $_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         <?php require __DIR__ . '/inc/siteHeaderFooterCss.php'; ?>
         :root {
@@ -213,13 +214,42 @@ if (!$showThanks && $_SERVER['REQUEST_METHOD'] === 'POST') {
             opacity: 0.9;
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 767px) {
             .contact-page {
                 padding: 12px;
             }
 
             .contact-wrap {
                 padding: 18px 14px;
+            }
+
+            .contact-title {
+                font-size: 20px;
+            }
+
+            .contact-form {
+                gap: 12px;
+            }
+
+            .contact-input,
+            .contact-select,
+            .contact-textarea {
+                font-size: 16px;
+            }
+
+            .contact-submit {
+                width: 100%;
+            }
+            .contact-page {
+                padding: 10px;
+            }
+
+            .contact-wrap {
+                padding: 16px 12px;
+            }
+
+            .contact-title {
+                font-size: 18px;
             }
         }
     </style>

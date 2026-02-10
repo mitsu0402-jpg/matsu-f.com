@@ -12,7 +12,7 @@ function h(string $value): string
 
 function format_bool(?string $value, string $yes, string $no): string
 {
-    if ($value === null || $value === '') {
+    if ($value === null || $value === '' || $value === '非表示') {
         return '';
     }
     return $value === '1' ? $yes : $no;
@@ -95,7 +95,7 @@ $imageUrls = array_values(array_filter(array_map(function ($path) {
 
 $inquiryErrors = [];
 $inquirySuccess = false;
-$inquiryMailTo = ['info@matsu-f.com', 'mitsu0402@gmail.com'];
+$inquiryMailTo = ['info@matsu-f.com'];
 $inquiryTimeOptions = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
 $inquiryDateOptions = [];
 $baseDate = new DateTimeImmutable('today', new DateTimeZone('Asia/Tokyo'));
@@ -219,11 +219,15 @@ $detailItems = [
     'その他' => (string)($row['sonota'] ?? ''),
     '備考' => (string)($row['notes'] ?? ''),
 ];
+$detailItems = array_filter($detailItems, function ($value) {
+    return $value !== '' && $value !== null && $value !== '非表示';
+});
 ?>
 <!doctype html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <?php
     $pageName = trim((string)($row['name'] ?? ''));
     $pageTitle = $pageName !== '' ? $pageName . '　貸し物件詳細' : '貸し物件詳細';
@@ -368,15 +372,30 @@ $detailItems = [
             flex: 0 0 auto;
         }
 
-        .image-thumbs {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 10px;
+        #rent-thumbs {
+            overflow: hidden;
+            position: relative;
+            user-select: none;
+            touch-action: pan-y;
             padding: 12px;
             background: #fff;
         }
 
+        .thumb-track {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            will-change: transform;
+            cursor: grab;
+        }
+
+        .thumb-track.is-dragging {
+            cursor: grabbing;
+        }
+
         .image-thumb {
+            width: 110px;
+            flex: 0 0 auto;
             border-radius: 10px;
             overflow: hidden;
             border: 2px solid transparent;
@@ -519,7 +538,7 @@ $detailItems = [
             opacity: 0.9;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 767px) {
 
             .detail-main {
                 grid-template-columns: 1fr;
@@ -578,12 +597,14 @@ require __DIR__ . '/inc/siteHeader.php';
                     <div class="hero-counter" id="rent-counter"></div>
                 </div>
                 <?php if ($imageUrls): ?>
-                    <div class="image-thumbs" id="rent-thumbs">
-                        <?php foreach ($imageUrls as $index => $url): ?>
-                            <div class="image-thumb<?php echo $index === 0 ? ' is-active' : ''; ?>" data-image="<?php echo h($url); ?>">
-                                <img src="<?php echo h($url); ?>" alt="">
-                            </div>
-                        <?php endforeach; ?>
+                    <div id="rent-thumbs">
+                        <div class="thumb-track">
+                            <?php foreach ($imageUrls as $index => $url): ?>
+                                <div class="image-thumb<?php echo $index === 0 ? ' is-active' : ''; ?>" data-image="<?php echo h($url); ?>" data-index="<?php echo $index; ?>">
+                                    <img src="<?php echo h($url); ?>" alt="">
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
                 <?php endif; ?>
             </div>
@@ -619,6 +640,28 @@ require __DIR__ . '/inc/siteHeader.php';
             <h2 class="inquiry-title">簡単内覧予約</h2>
             <?php if ($inquirySuccess): ?>
                 <p class="inquiry-message is-success">送信ありがとうございました。担当よりご連絡いたします。</p>
+                <div id="rent-inquiry-notice" style="position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 9999; margin: 0; padding: 10px 14px; background: rgba(248, 215, 218, 0.95); color: #7b1b1b; border: 1px solid #f2b6bd; border-radius: 999px; box-shadow: 0 10px 24px rgba(123, 27, 27, 0.18); opacity: 0; transition: opacity 0.6s ease;">
+                    予約を送信しました
+                </div>
+                <script>
+                    (function () {
+                        var notice = document.getElementById('rent-inquiry-notice');
+                        if (!notice) {
+                            return;
+                        }
+                        window.setTimeout(function () {
+                            notice.style.opacity = '1';
+                        }, 50);
+                        window.setTimeout(function () {
+                            notice.style.opacity = '0';
+                        }, 2400);
+                        window.setTimeout(function () {
+                            if (notice && notice.parentNode) {
+                                notice.parentNode.removeChild(notice);
+                            }
+                        }, 3200);
+                    })();
+                </script>
             <?php elseif ($inquiryErrors): ?>
                 <p class="inquiry-message"><?php echo h(implode(' ', $inquiryErrors)); ?></p>
             <?php endif; ?>
@@ -741,23 +784,35 @@ require __DIR__ . '/inc/siteFooter.php';
     (function () {
         var hero = document.getElementById('rent-hero');
         var thumbWrap = document.getElementById('rent-thumbs');
+        var thumbTrack = thumbWrap ? thumbWrap.querySelector('.thumb-track') : null;
         var prevBtn = document.getElementById('rent-prev');
         var nextBtn = document.getElementById('rent-next');
         var counter = document.getElementById('rent-counter');
-        if (!hero || !thumbWrap || !prevBtn || !nextBtn || !counter) {
+        if (!hero || !thumbWrap || !thumbTrack || !prevBtn || !nextBtn || !counter) {
             return;
         }
-        var thumbs = Array.prototype.slice.call(thumbWrap.querySelectorAll('.image-thumb[data-image]'));
+        var thumbs = Array.prototype.slice.call(thumbTrack.querySelectorAll('.image-thumb[data-image]'));
         if (!thumbs.length) {
             prevBtn.disabled = true;
             nextBtn.disabled = true;
             return;
         }
+        var originalThumbs = thumbs.slice();
+        var originalCount = originalThumbs.length;
         var currentIndex = 0;
+        var autoScrollPaused = false;
+        var autoScrollSpeed = 18; // px per second
+        var trackWidth = 0;
+        var offset = 0;
+        var lastTime = 0;
+        var isDragging = false;
+        var dragMoved = false;
+        var dragStartX = 0;
+        var dragStartOffset = 0;
 
         function setActive(index) {
-            var clamped = (index + thumbs.length) % thumbs.length;
-            var target = thumbs[clamped];
+            var clamped = (index + originalCount) % originalCount;
+            var target = originalThumbs[clamped];
             if (!target) {
                 return;
             }
@@ -766,32 +821,58 @@ require __DIR__ . '/inc/siteFooter.php';
                 return;
             }
             hero.style.backgroundImage = "url('" + url.replace(/'/g, "\\'") + "')";
-            var active = thumbWrap.querySelector('.image-thumb.is-active');
-            if (active) {
-                active.classList.remove('is-active');
+            var dataIndex = target.getAttribute('data-index');
+            Array.prototype.forEach.call(thumbTrack.querySelectorAll('.image-thumb.is-active'), function (thumb) {
+                thumb.classList.remove('is-active');
+            });
+            if (dataIndex !== null) {
+                Array.prototype.forEach.call(thumbTrack.querySelectorAll('.image-thumb[data-index="' + dataIndex + '"]'), function (thumb) {
+                    thumb.classList.add('is-active');
+                });
             }
-            target.classList.add('is-active');
             currentIndex = clamped;
-            counter.textContent = (clamped + 1) + '/' + thumbs.length;
+            counter.textContent = (clamped + 1) + '/' + originalCount;
+        }
+
+        thumbs.forEach(function (thumb, idx) {
+            var dataIndex = parseInt(thumb.getAttribute('data-index') || '', 10);
+            if (!Number.isNaN(dataIndex)) {
+                idx = dataIndex;
+            }
+            thumb.setAttribute('data-order', String(idx));
+        });
+        thumbs.sort(function (a, b) {
+            return parseInt(a.getAttribute('data-order'), 10) - parseInt(b.getAttribute('data-order'), 10);
+        });
+        thumbs.forEach(function (thumb) {
+            thumbTrack.appendChild(thumb);
+        });
+        thumbs.forEach(function (thumb) {
+            thumbTrack.appendChild(thumb.cloneNode(true));
+        });
+        trackWidth = Math.floor(thumbTrack.scrollWidth / 2);
+
+        function activateThumb(target) {
+            if (!target) {
+                return;
+            }
+            var dataIndex = parseInt(target.getAttribute('data-index') || '', 10);
+            if (Number.isNaN(dataIndex)) {
+                return;
+            }
+            setActive(dataIndex);
+            autoScrollPaused = true;
+            window.setTimeout(function () {
+                autoScrollPaused = false;
+            }, 2500);
         }
 
         thumbWrap.addEventListener('click', function (event) {
+            if (dragMoved) {
+                return;
+            }
             var target = event.target.closest('.image-thumb');
-            if (!target) {
-                return;
-            }
-            var url = target.getAttribute('data-image');
-            if (!url) {
-                return;
-            }
-            hero.style.backgroundImage = "url('" + url.replace(/'/g, "\\'") + "')";
-            var active = thumbWrap.querySelector('.image-thumb.is-active');
-            if (active) {
-                active.classList.remove('is-active');
-            }
-            target.classList.add('is-active');
-            currentIndex = thumbs.indexOf(target);
-            counter.textContent = (currentIndex + 1) + '/' + thumbs.length;
+            activateThumb(target);
         });
 
         prevBtn.addEventListener('click', function () {
@@ -803,6 +884,92 @@ require __DIR__ . '/inc/siteFooter.php';
         });
 
         setActive(currentIndex);
+
+        function normalizeOffset(value) {
+            if (trackWidth <= 0) {
+                return 0;
+            }
+            var wrapped = value % trackWidth;
+            return wrapped < 0 ? wrapped + trackWidth : wrapped;
+        }
+
+        function renderOffset() {
+            thumbTrack.style.transform = 'translateX(' + (-offset) + 'px)';
+        }
+
+        function tickAutoScroll(time) {
+            if (!lastTime) {
+                lastTime = time;
+            }
+            var delta = (time - lastTime) / 1000;
+            lastTime = time;
+            if (!autoScrollPaused && trackWidth > 0) {
+                offset = normalizeOffset(offset + autoScrollSpeed * delta);
+                renderOffset();
+            }
+            window.requestAnimationFrame(tickAutoScroll);
+        }
+
+        function onPointerDown(event) {
+            if (!event.isPrimary) {
+                return;
+            }
+            isDragging = true;
+            dragMoved = false;
+            autoScrollPaused = true;
+            dragStartX = event.clientX;
+            dragStartOffset = offset;
+            thumbTrack.classList.add('is-dragging');
+            thumbWrap.setPointerCapture(event.pointerId);
+        }
+
+        function onPointerMove(event) {
+            if (!isDragging) {
+                return;
+            }
+            var deltaX = event.clientX - dragStartX;
+            if (Math.abs(deltaX) > 5) {
+                dragMoved = true;
+            }
+            offset = normalizeOffset(dragStartOffset - deltaX);
+            renderOffset();
+        }
+
+        function onPointerUp(event) {
+            if (!isDragging) {
+                return;
+            }
+            isDragging = false;
+            thumbTrack.classList.remove('is-dragging');
+            thumbWrap.releasePointerCapture(event.pointerId);
+            if (!dragMoved) {
+                var pointTarget = document.elementFromPoint(event.clientX, event.clientY);
+                var target = pointTarget ? pointTarget.closest('.image-thumb') : null;
+                activateThumb(target);
+            }
+            window.setTimeout(function () {
+                autoScrollPaused = false;
+            }, 800);
+        }
+
+        thumbWrap.addEventListener('mouseenter', function () {
+            autoScrollPaused = true;
+        });
+
+        thumbWrap.addEventListener('mouseleave', function () {
+            if (!isDragging) {
+                autoScrollPaused = false;
+            }
+        });
+
+        thumbWrap.addEventListener('pointerdown', onPointerDown);
+        thumbWrap.addEventListener('pointermove', onPointerMove);
+        thumbWrap.addEventListener('pointerup', onPointerUp);
+        thumbWrap.addEventListener('pointercancel', onPointerUp);
+        thumbWrap.addEventListener('pointerleave', onPointerUp);
+
+        renderOffset();
+        window.requestAnimationFrame(tickAutoScroll);
     })();
 </script>
 <?php endif; ?>

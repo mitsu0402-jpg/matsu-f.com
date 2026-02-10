@@ -16,7 +16,7 @@ $siteBreadcrumbs = is_array($siteBreadcrumbs ?? null) ? $siteBreadcrumbs : [];
             <a href="/"<?php echo $siteNavActive === 'home' ? ' class="is-active"' : ''; ?>>HOME</a>
             <a href="/saleList.php"<?php echo $siteNavActive === 'sale' ? ' class="is-active"' : ''; ?>>売り物件一覧</a>
             <a href="/rentList.php"<?php echo $siteNavActive === 'rent' ? ' class="is-active"' : ''; ?>>貸し物件一覧</a>
-            <a href="/contact.php"<?php echo $siteNavActive === 'contact' ? ' class="is-active"' : ''; ?>>売りたい・貸したい</a>
+            <a href="/owner/"<?php echo $siteNavActive === 'contact' ? ' class="is-active"' : ''; ?>>売りたい・貸したい</a>
         </nav>
     </div>
     <p class="site-hero-title"><?php echo h($siteHeroTitle); ?></p>

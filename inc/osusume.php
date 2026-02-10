@@ -37,7 +37,7 @@ try {
     <meta charset="UTF-8">
     <style>
         :root {
-            --card-size: 25%;
+            --card-size: 33%;
             --card-radius: 12px;
             --card-gap: 16px;
             --card-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
@@ -57,7 +57,7 @@ try {
         }
 
         .osusume-title {
-            margin: 0 0 12px;
+            margin: 5px auto 30px auto;
             font-size: 22px;
             letter-spacing: 0.08em;
             text-align: center;
@@ -67,6 +67,7 @@ try {
             display: flex;
             gap: var(--card-gap);
             padding-bottom: 4px;
+            will-change: transform;
         }
 
         .osusume-card {
@@ -112,7 +113,7 @@ try {
             color: #545454;
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 767px) {
             :root {
                 --card-size: 180px;
             }
@@ -155,29 +156,55 @@ try {
         if (!carousel) return;
 
         var track = carousel.querySelector('.osusume-track');
-        var cards = carousel.querySelectorAll('.osusume-card');
-        if (!track || cards.length < 2) return;
+        if (!track) return;
 
-        var gapValue = getComputedStyle(track).gap || '0';
-        var gap = parseFloat(gapValue) || 0;
-        var step = cards[0].getBoundingClientRect().width + gap;
-        if (!step) return;
+        var cards = Array.prototype.slice.call(track.querySelectorAll('.osusume-card'));
+        if (cards.length < 2) return;
 
-        track.style.transition = 'transform 700ms ease';
-        var index = 0;
-        var intervalMs = 4500;
+        cards.forEach(function (card) {
+            track.appendChild(card.cloneNode(true));
+        });
 
-        setInterval(function () {
-            index = (index + 1) % cards.length;
-            if (index === 0) {
-                track.style.transition = 'none';
-                track.style.transform = 'translateX(0)';
-                track.offsetHeight;
-                track.style.transition = 'transform 700ms ease';
-                return;
+        var trackWidth = Math.floor(track.scrollWidth / 2);
+        if (!trackWidth) return;
+
+        var offset = 0;
+        var lastTime = 0;
+        var speed = 18; // px per second
+        var paused = false;
+
+        function normalize(value) {
+            var wrapped = value % trackWidth;
+            return wrapped < 0 ? wrapped + trackWidth : wrapped;
+        }
+
+        function render() {
+            track.style.transform = 'translateX(' + (-offset) + 'px)';
+        }
+
+        function tick(time) {
+            if (!lastTime) {
+                lastTime = time;
             }
-            track.style.transform = 'translateX(' + (-step * index) + 'px)';
-        }, intervalMs);
+            var delta = (time - lastTime) / 1000;
+            lastTime = time;
+            if (!paused) {
+                offset = normalize(offset + speed * delta);
+                render();
+            }
+            window.requestAnimationFrame(tick);
+        }
+
+        carousel.addEventListener('mouseenter', function () {
+            paused = true;
+        });
+
+        carousel.addEventListener('mouseleave', function () {
+            paused = false;
+        });
+
+        render();
+        window.requestAnimationFrame(tick);
     }
 
     if (document.readyState === 'complete') {

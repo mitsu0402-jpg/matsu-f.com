@@ -113,11 +113,12 @@ try {
         <th>公開状態</th>
         <th>更新日</th>
         <th>操作</th>
+        <th>複製</th>
       </tr>
     </thead>
     <tbody>
       <?php if (!$rows): ?>
-        <tr><td colspan="9">データがありません。</td></tr>
+        <tr><td colspan="10">データがありません。</td></tr>
       <?php else: ?>
         <?php foreach ($rows as $row): ?>
           <tr class="draggable-row" draggable="true" data-id="<?php echo h((string)$row['id']); ?>">
@@ -130,6 +131,9 @@ try {
             <td><?php echo ((int)$row['status'] === 1) ? '公開' : '下書き'; ?></td>
             <td><?php echo h((string)$row['lastUpdateDate']); ?></td>
             <td><a href="index.php?page=rent_edit&id=<?php echo h((string)$row['id']); ?>">編集</a></td>
+            <td>
+              <a href="index.php?page=rent_edit&amp;copy_id=<?php echo h((string)$row['id']); ?>" onclick="return confirm('この物件をコピーして新規作成しますか？');">コピー</a>
+            </td>
           </tr>
         <?php endforeach; ?>
       <?php endif; ?>

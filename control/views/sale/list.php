@@ -12,6 +12,7 @@ $status = isset($_GET['status']) ? trim((string)$_GET['status']) : '';
 
 $rows = [];
 $error = '';
+$notice = '';
 
 try {
     $pdo = getPDO();
@@ -43,6 +44,54 @@ try {
         exit;
     }
 
+    $copyId = filter_input(INPUT_GET, 'copy_id', FILTER_VALIDATE_INT);
+    if ($copyId) {
+        $pdo->beginTransaction();
+        $copyStmt = $pdo->prepare('SELECT * FROM sale_properties WHERE id = :id');
+        $copyStmt->execute(['id' => $copyId]);
+        $source = $copyStmt->fetch(PDO::FETCH_ASSOC);
+        if ($source) {
+            unset($source['id']);
+            $source['name'] = trim((string)($source['name'] ?? '')) . '（コピー）';
+            if (array_key_exists('status', $source)) {
+                $source['status'] = 0;
+            }
+            $now = date('Y-m-d H:i:s');
+            if (array_key_exists('firstAddDate', $source)) {
+                $source['firstAddDate'] = $now;
+            }
+            if (array_key_exists('lastUpdateDate', $source)) {
+                $source['lastUpdateDate'] = $now;
+            }
+            $columns = array_keys($source);
+            $placeholders = array_map(function ($col) {
+                return ':' . $col;
+            }, $columns);
+            $insertSql = 'INSERT INTO sale_properties (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')';
+            $insertStmt = $pdo->prepare($insertSql);
+            $insertStmt->execute($source);
+            $newId = (int)$pdo->lastInsertId();
+
+            $imgStmt = $pdo->prepare('SELECT file_path, sort, status FROM property_images WHERE property_type = \'sale\' AND property_id = :id');
+            $imgStmt->execute(['id' => $copyId]);
+            $images = $imgStmt->fetchAll(PDO::FETCH_ASSOC);
+            if ($images) {
+                $insertImg = $pdo->prepare('INSERT INTO property_images (property_type, property_id, file_path, sort, status, created_at) VALUES (\'sale\', :property_id, :file_path, :sort, :status, NOW())');
+                foreach ($images as $img) {
+                    $insertImg->execute([
+                        'property_id' => $newId,
+                        'file_path' => (string)($img['file_path'] ?? ''),
+                        'sort' => (int)($img['sort'] ?? 0),
+                        'status' => (int)($img['status'] ?? 1),
+                    ]);
+                }
+            }
+        }
+        $pdo->commit();
+        header('Location: index.php?page=sale_list&copied=1', true, 303);
+        exit;
+    }
+
     $where = [];
     $params = [];
 
@@ -71,6 +120,10 @@ try {
 } catch (Throwable $e) {
     $error = 'エラーが発生しました。' . $e->getMessage();
 }
+
+if (isset($_GET['copied']) && $_GET['copied'] === '1') {
+    $notice = 'コピーを作成しました。';
+}
 ?>
 
 <style>
@@ -98,6 +151,9 @@ try {
 <?php if ($error): ?>
   <p><?php echo h($error); ?></p>
 <?php endif; ?>
+<?php if ($notice): ?>
+  <p><?php echo h($notice); ?></p>
+<?php endif; ?>
 
 <section>
   <div class="table-scroll">
@@ -113,11 +169,12 @@ try {
         <th>公開状態</th>
         <th>更新日</th>
         <th>操作</th>
+        <th>複製</th>
       </tr>
     </thead>
     <tbody>
       <?php if (!$rows): ?>
-        <tr><td colspan="9">データがありません。</td></tr>
+        <tr><td colspan="10">データがありません。</td></tr>
       <?php else: ?>
         <?php foreach ($rows as $row): ?>
           <tr class="draggable-row" draggable="true" data-id="<?php echo h((string)$row['id']); ?>">
@@ -130,6 +187,9 @@ try {
             <td><?php echo ((int)$row['status'] === 1) ? '公開' : '下書き'; ?></td>
             <td><?php echo h((string)$row['lastUpdateDate']); ?></td>
             <td><a href="index.php?page=sale_edit&id=<?php echo h((string)$row['id']); ?>">編集</a></td>
+            <td>
+              <a href="index.php?page=sale_create&amp;copy_id=<?php echo h((string)$row['id']); ?>" onclick="return confirm('この物件をコピーして新規作成しますか？');">コピー</a>
+            </td>
           </tr>
         <?php endforeach; ?>
       <?php endif; ?>

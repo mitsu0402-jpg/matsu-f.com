@@ -33,13 +33,14 @@ try {
 <!doctype html>
 <html lang="ja">
     <head>
-    <meta charset="UTF-8">
+  <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>売り物件一覧 松永不動産</title>
     <style>
         <?php require __DIR__ . '/inc/siteHeaderFooterCss.php'; ?>
         :root {
             --card-radius: 12px;
-            --card-gap: 16px;
+            --card-gap: 24px;
             --card-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
         }
 
@@ -122,7 +123,7 @@ try {
         .osusume-body {
             display: grid;
             gap: 4px;
-            padding: 10px 12px;
+            padding: 12px 12px;
             background: rgba(255, 255, 255, 0.92);
         }
 
@@ -130,6 +131,7 @@ try {
             font-size: 15px;
             font-weight: 600;
             line-height: 1.3;
+            margin-top: 5px;
         }
 
         .osusume-price {
@@ -142,15 +144,19 @@ try {
             color: #545454;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 767px) {
             .osusume-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
+
+            .osusume-map {
+                height: 420px;
+            }
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 767px) {
             :root {
-                --card-gap: 8px;
+                --card-gap: 20px;
             }
 
             .site-main {
@@ -158,7 +164,7 @@ try {
             }
 
             .page-shell {
-                padding: 1%;
+                padding: 12px;
             }
 
             .osusume-grid {
@@ -167,13 +173,39 @@ try {
 
             .osusume-card {
                 grid-template-columns: 1fr;
-                grid-template-rows: auto auto;
-                aspect-ratio: auto;
+                grid-template-rows: 58% 42%;
+                aspect-ratio: 1 / 1;
+                margin: 0;
             }
 
             .osusume-image {
                 width: 100%;
-                min-height: 120px;
+                min-height: 0;
+            }
+
+            .osusume-body {
+                padding: 10px 12px;
+            }
+
+            .osusume-price {
+                line-height: 1.2;
+            }
+            .map-title {
+                margin-top: 48px;
+            }
+
+            .osusume-title {
+                margin-top: 48px;
+            }
+            .osusumme-name {
+                margin-top: 2px;
+            }
+            .osusume-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .osusume-map {
+                height: 300px;
             }
         }
     </style>
@@ -214,7 +246,7 @@ require __DIR__ . '/inc/siteHeader.php';
                     <div class="osusume-image" style="<?php echo $style; ?>"></div>
                     <div class="osusume-body">
                         <div class="osusume-name"><?php echo h((string)$row['name']); ?></div>
-                        <div class="osusume-location"><?php echo h((string)$row['location']); ?></div>
+                        <?php /* 住所は非表示 */ ?>
                         <div class="osusume-price"><?php echo number_format((int)$row['price']); ?> 万円</div>
 
                     </div>

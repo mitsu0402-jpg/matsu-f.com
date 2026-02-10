@@ -12,7 +12,7 @@ function h(string $value): string
 
 function format_bool(?string $value, string $yes, string $no): string
 {
-    if ($value === null || $value === '') {
+    if ($value === null || $value === '' || $value === '非表示') {
         return '';
     }
     return $value === '1' ? $yes : $no;
@@ -124,11 +124,14 @@ if ($cate === '土地') {
 $displayPrice = isset($row['price']) && $row['price'] !== '' ? number_format((int)$row['price']) : '';
 $displayLocation = (string)($row['location'] ?? '');
 $displayTransaction = (string)($row['transaction_type'] ?? '');
+if ($displayTransaction === '非表示') {
+    $displayTransaction = '';
+}
 $catchCopy = short_text((string)($row['catchCopy'] ?? ''), 20);
 $description = trim((string)($row['setsumei'] ?? ''));
 $inquiryErrors = [];
 $inquirySuccess = false;
-$inquiryMailTo = ['info@matsu-f.com', 'mitsu0402@gmail.com'];
+$inquiryMailTo = ['info@matsu-f.com'];
 $inquiryTimeOptions = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
 $inquiryDateOptions = [];
 $baseDate = new DateTimeImmutable('today', new DateTimeZone('Asia/Tokyo'));
@@ -247,18 +250,19 @@ $optionalItems = [
     '学校区' => (string)($row['school_district'] ?? ''),
 ];
 $optionalItems = array_filter($optionalItems, function ($value) {
-    return $value !== '' && $value !== null;
+    return $value !== '' && $value !== null && $value !== '非表示';
 });
 ?>
 <!doctype html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
+  <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <?php
     $pageName = trim((string)($row['name'] ?? ''));
     $pageTitle = $pageName !== '' ? $pageName . '　売り物件詳細' : '売り物件詳細';
     ?>
-    <title><?php echo h($pageTitle); ?></title>
+    <title><?php echo h($pageTitle); ?>　松永不動産</title>
     <style>
         <?php require __DIR__ . '/inc/siteHeaderFooterCss.php'; ?>
         :root {
@@ -401,20 +405,28 @@ $optionalItems = array_filter($optionalItems, function ($value) {
             margin: 0 auto;
         }
 
-        .thumb-grid {
-            display: grid;
+        #sale-thumbs {
+            overflow: hidden;
+            position: relative;
+            user-select: none;
+            touch-action: pan-y;
+        }
+
+        .thumb-track {
+            display: flex;
             gap: 8px;
+            align-items: center;
+            will-change: transform;
+            cursor: grab;
         }
 
-        .thumb-grid.is-three {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-
-        .thumb-grid.is-four {
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+        .thumb-track.is-dragging {
+            cursor: grabbing;
         }
 
         .image-thumb {
+            width: 110px;
+            flex: 0 0 auto;
             background: #e9e1da;
             border-radius: 6px;
             overflow: hidden;
@@ -635,7 +647,7 @@ $optionalItems = array_filter($optionalItems, function ($value) {
             opacity: 0.9;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 767px) {
 
             .panel-row {
                 grid-template-columns: 1fr;
@@ -695,17 +707,9 @@ require __DIR__ . '/inc/siteHeader.php';
             <div class="panel-row<?php echo !$hasGalleryImages ? ' no-thumbs' : ''; ?>">
                 <?php if ($hasGalleryImages): ?>
                 <div id="sale-thumbs">
-                    <div class="thumb-grid is-three">
-                            <?php foreach (array_slice($imageUrls, 0, 3) as $index => $url): ?>
+                    <div class="thumb-track">
+                            <?php foreach ($imageUrls as $index => $url): ?>
                                 <div class="image-thumb<?php echo $index === 0 ? ' is-active' : ''; ?>" data-image="<?php echo h($url); ?>" data-index="<?php echo $index; ?>">
-                                    <img src="<?php echo h($url); ?>" alt="">
-                                </div>
-                            <?php endforeach; ?>
-                    </div>
-                    <div class="thumb-grid is-four" style="margin-top:8px;">
-                            <?php foreach (array_slice($imageUrls, 3, 4) as $index => $url): ?>
-                                <?php $realIndex = $index + 3; ?>
-                                <div class="image-thumb" data-image="<?php echo h($url); ?>" data-index="<?php echo $realIndex; ?>">
                                     <img src="<?php echo h($url); ?>" alt="">
                                 </div>
                             <?php endforeach; ?>
@@ -770,6 +774,28 @@ require __DIR__ . '/inc/siteHeader.php';
             <h2 class="inquiry-title">簡単内覧予約</h2>
             <?php if ($inquirySuccess): ?>
                 <p class="inquiry-message is-success">送信ありがとうございました。担当よりご連絡いたします。</p>
+                <div id="sale-inquiry-notice" style="position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 9999; margin: 0; padding: 10px 14px; background: rgba(248, 215, 218, 0.95); color: #7b1b1b; border: 1px solid #f2b6bd; border-radius: 999px; box-shadow: 0 10px 24px rgba(123, 27, 27, 0.18); opacity: 0; transition: opacity 0.6s ease;">
+                    予約を送信しました
+                </div>
+                <script>
+                    (function () {
+                        var notice = document.getElementById('sale-inquiry-notice');
+                        if (!notice) {
+                            return;
+                        }
+                        window.setTimeout(function () {
+                            notice.style.opacity = '1';
+                        }, 50);
+                        window.setTimeout(function () {
+                            notice.style.opacity = '0';
+                        }, 2400);
+                        window.setTimeout(function () {
+                            if (notice && notice.parentNode) {
+                                notice.parentNode.removeChild(notice);
+                            }
+                        }, 3200);
+                    })();
+                </script>
             <?php elseif ($inquiryErrors): ?>
                 <p class="inquiry-message"><?php echo h(implode(' ', $inquiryErrors)); ?></p>
             <?php endif; ?>
@@ -843,23 +869,35 @@ require __DIR__ . '/inc/siteFooter.php';
     (function () {
         var hero = document.getElementById('sale-hero');
         var thumbWrap = document.getElementById('sale-thumbs');
+        var thumbTrack = thumbWrap ? thumbWrap.querySelector('.thumb-track') : null;
         var prevBtn = document.getElementById('sale-prev');
         var nextBtn = document.getElementById('sale-next');
         var counter = document.getElementById('sale-counter');
-        if (!hero || !thumbWrap || !prevBtn || !nextBtn || !counter) {
+        if (!hero || !thumbWrap || !thumbTrack || !prevBtn || !nextBtn || !counter) {
             return;
         }
-        var thumbs = Array.prototype.slice.call(thumbWrap.querySelectorAll('.image-thumb[data-image]'));
+        var thumbs = Array.prototype.slice.call(thumbTrack.querySelectorAll('.image-thumb[data-image]'));
         if (!thumbs.length) {
             prevBtn.disabled = true;
             nextBtn.disabled = true;
             return;
         }
+        var originalThumbs = thumbs.slice();
+        var originalCount = originalThumbs.length;
         var currentIndex = 0;
+        var autoScrollPaused = false;
+        var autoScrollSpeed = 18; // px per second
+        var trackWidth = 0;
+        var offset = 0;
+        var lastTime = 0;
+        var isDragging = false;
+        var dragMoved = false;
+        var dragStartX = 0;
+        var dragStartOffset = 0;
 
         function setActive(index) {
-            var clamped = (index + thumbs.length) % thumbs.length;
-            var target = thumbs[clamped];
+            var clamped = (index + originalCount) % originalCount;
+            var target = originalThumbs[clamped];
             if (!target) {
                 return;
             }
@@ -868,13 +906,17 @@ require __DIR__ . '/inc/siteFooter.php';
                 return;
             }
             hero.style.backgroundImage = "url('" + url.replace(/'/g, "\\'") + "')";
-            var active = thumbWrap.querySelector('.image-thumb.is-active');
-            if (active) {
-                active.classList.remove('is-active');
+            var dataIndex = target.getAttribute('data-index');
+            Array.prototype.forEach.call(thumbTrack.querySelectorAll('.image-thumb.is-active'), function (thumb) {
+                thumb.classList.remove('is-active');
+            });
+            if (dataIndex !== null) {
+                Array.prototype.forEach.call(thumbTrack.querySelectorAll('.image-thumb[data-index="' + dataIndex + '"]'), function (thumb) {
+                    thumb.classList.add('is-active');
+                });
             }
-            target.classList.add('is-active');
             currentIndex = clamped;
-            counter.textContent = (clamped + 1) + '/' + thumbs.length;
+            counter.textContent = (clamped + 1) + '/' + originalCount;
         }
 
         thumbs.forEach(function (thumb, idx) {
@@ -887,23 +929,36 @@ require __DIR__ . '/inc/siteFooter.php';
         thumbs.sort(function (a, b) {
             return parseInt(a.getAttribute('data-order'), 10) - parseInt(b.getAttribute('data-order'), 10);
         });
+        thumbs.forEach(function (thumb) {
+            thumbTrack.appendChild(thumb);
+        });
+        thumbs.forEach(function (thumb) {
+            thumbTrack.appendChild(thumb.cloneNode(true));
+        });
+        var allThumbs = Array.prototype.slice.call(thumbTrack.querySelectorAll('.image-thumb[data-image]'));
+        trackWidth = Math.floor(thumbTrack.scrollWidth / 2);
 
-        thumbWrap.addEventListener('click', function (event) {
-            var target = event.target.closest('.image-thumb');
+        function activateThumb(target) {
             if (!target) {
                 return;
             }
-            var url = target.getAttribute('data-image');
-            if (!url) {
+            var dataIndex = parseInt(target.getAttribute('data-index') || '', 10);
+            if (Number.isNaN(dataIndex)) {
                 return;
             }
-            hero.style.backgroundImage = "url('" + url.replace(/'/g, "\\'") + "')";
-            var active = thumbWrap.querySelector('.image-thumb.is-active');
-            if (active) {
-                active.classList.remove('is-active');
+            setActive(dataIndex);
+            autoScrollPaused = true;
+            window.setTimeout(function () {
+                autoScrollPaused = false;
+            }, 2500);
+        }
+
+        thumbWrap.addEventListener('click', function (event) {
+            if (dragMoved) {
+                return;
             }
-            target.classList.add('is-active');
-            currentIndex = thumbs.indexOf(target);
+            var target = event.target.closest('.image-thumb');
+            activateThumb(target);
         });
 
         prevBtn.addEventListener('click', function () {
@@ -916,13 +971,99 @@ require __DIR__ . '/inc/siteFooter.php';
 
         setActive(currentIndex);
 
+        function normalizeOffset(value) {
+            if (trackWidth <= 0) {
+                return 0;
+            }
+            var wrapped = value % trackWidth;
+            return wrapped < 0 ? wrapped + trackWidth : wrapped;
+        }
+
+        function renderOffset() {
+            thumbTrack.style.transform = 'translateX(' + (-offset) + 'px)';
+        }
+
+        function tickAutoScroll(time) {
+            if (!lastTime) {
+                lastTime = time;
+            }
+            var delta = (time - lastTime) / 1000;
+            lastTime = time;
+            if (!autoScrollPaused && trackWidth > 0) {
+                offset = normalizeOffset(offset + autoScrollSpeed * delta);
+                renderOffset();
+            }
+            window.requestAnimationFrame(tickAutoScroll);
+        }
+
+        function onPointerDown(event) {
+            if (!event.isPrimary) {
+                return;
+            }
+            isDragging = true;
+            dragMoved = false;
+            autoScrollPaused = true;
+            dragStartX = event.clientX;
+            dragStartOffset = offset;
+            thumbTrack.classList.add('is-dragging');
+            thumbWrap.setPointerCapture(event.pointerId);
+        }
+
+        function onPointerMove(event) {
+            if (!isDragging) {
+                return;
+            }
+            var deltaX = event.clientX - dragStartX;
+            if (Math.abs(deltaX) > 5) {
+                dragMoved = true;
+            }
+            offset = normalizeOffset(dragStartOffset - deltaX);
+            renderOffset();
+        }
+
+        function onPointerUp(event) {
+            if (!isDragging) {
+                return;
+            }
+            isDragging = false;
+            thumbTrack.classList.remove('is-dragging');
+            thumbWrap.releasePointerCapture(event.pointerId);
+            if (!dragMoved) {
+                var pointTarget = document.elementFromPoint(event.clientX, event.clientY);
+                var target = pointTarget ? pointTarget.closest('.image-thumb') : null;
+                activateThumb(target);
+            }
+            window.setTimeout(function () {
+                autoScrollPaused = false;
+            }, 800);
+        }
+
+        thumbWrap.addEventListener('mouseenter', function () {
+            autoScrollPaused = true;
+        });
+
+        thumbWrap.addEventListener('mouseleave', function () {
+            if (!isDragging) {
+                autoScrollPaused = false;
+            }
+        });
+
+        thumbWrap.addEventListener('pointerdown', onPointerDown);
+        thumbWrap.addEventListener('pointermove', onPointerMove);
+        thumbWrap.addEventListener('pointerup', onPointerUp);
+        thumbWrap.addEventListener('pointercancel', onPointerUp);
+        thumbWrap.addEventListener('pointerleave', onPointerUp);
+
+        renderOffset();
+        window.requestAnimationFrame(tickAutoScroll);
+
         var startX = 0;
         var startY = 0;
         var isTouching = false;
         var swipeThreshold = 40;
 
         hero.addEventListener('touchstart', function (event) {
-            if (!window.matchMedia || !window.matchMedia('(max-width: 900px)').matches) {
+            if (!window.matchMedia || !window.matchMedia('(max-width: 767px)').matches) {
                 return;
             }
             var touch = event.touches[0];
