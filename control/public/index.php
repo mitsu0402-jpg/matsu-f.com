@@ -1,5 +1,114 @@
-﻿<?php
+<?php
+ini_set('display_errors','1');
+ini_set('display_startup_errors','1');
+error_reporting(E_ALL);
+
 $currentPage = $_GET['page'] ?? 'dashboard';
+$loginError = '';
+
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
+if (isset($_GET['logout']) && $_GET['logout'] === '1') {
+    $_SESSION = [];
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
+    }
+    session_destroy();
+    header('Location: index.php', true, 303);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['control_password'])) {
+    $password = trim((string)($_POST['control_password'] ?? ''));
+    if ($password === '0721') {
+        $_SESSION['control_authed'] = true;
+        $redirectPage = isset($_GET['page']) ? (string)$_GET['page'] : 'dashboard';
+        header('Location: index.php?page=' . urlencode($redirectPage), true, 303);
+        exit;
+    }
+    $loginError = 'パスワードが違います。';
+}
+
+if (empty($_SESSION['control_authed'])) {
+    $pageTitle = 'コントロールパネル ログイン';
+    ?>
+    <!doctype html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></title>
+      <style>
+        body {
+          margin: 0;
+          min-height: 100vh;
+          display: grid;
+          place-items: center;
+          font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+          background: #f4f6f8;
+        }
+        .login-card {
+          width: min(420px, 92vw);
+          background: #fff;
+          padding: 24px;
+          border-radius: 12px;
+          box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12);
+        }
+        .login-title {
+          margin: 0 0 12px;
+          font-size: 18px;
+          font-weight: 700;
+          text-align: center;
+        }
+        .login-field {
+          display: grid;
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+        .login-input {
+          padding: 10px 12px;
+          border: 1px solid #cfd6dd;
+          border-radius: 8px;
+          font-size: 16px;
+        }
+        .login-btn {
+          width: 100%;
+          padding: 10px 12px;
+          border: none;
+          border-radius: 999px;
+          background: #124b32;
+          color: #fff;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .login-error {
+          margin: 0 0 10px;
+          color: #b02a2a;
+          text-align: center;
+          font-size: 13px;
+        }
+      </style>
+    </head>
+    <body>
+      <form class="login-card" method="post" action="">
+        <div class="login-title">コントロールパネル ログイン</div>
+        <?php if ($loginError): ?>
+          <p class="login-error"><?php echo htmlspecialchars($loginError, ENT_QUOTES, 'UTF-8'); ?></p>
+        <?php endif; ?>
+        <div class="login-field">
+          <label for="control-password">パスワード</label>
+          <input class="login-input" id="control-password" name="control_password" type="password" required>
+        </div>
+        <button class="login-btn" type="submit">ログイン</button>
+      </form>
+    </body>
+    </html>
+<?php
+    exit;
+}
 
 $routes = [
     'dashboard' => __DIR__ . '/../views/dashboard/index.php',
@@ -47,6 +156,9 @@ $documentTitle = 'コントロールパネル ' . $pageTitle;
   <header class="app-header">
     <div class="brand">松永不動産　コントロールパネル</div>
     <div class="header-title">管理画面</div>
+    <div style="margin-left:auto;">
+      <a href="index.php?logout=1" style="color:#ffffff; text-decoration:none; font-size:12px;">ログアウト</a>
+    </div>
   </header>
 
   <nav class="nav-grid">
@@ -59,6 +171,7 @@ $documentTitle = 'コントロールパネル ' . $pageTitle;
     <a class="nav-card nav-card-6<?php echo $currentPage === 'area_list' ? ' is-current' : ''; ?>" href="index.php?page=area_list" <?php echo $currentPage === 'area_list' ? 'aria-current="page"' : ''; ?>>エリア一覧</a>
     <a class="nav-card nav-card-8<?php echo $currentPage === 'settings' ? ' is-current' : ''; ?>" href="index.php?page=settings" <?php echo $currentPage === 'settings' ? 'aria-current="page"' : ''; ?>>設定</a>
     <a class="nav-card nav-card-9<?php echo $currentPage === 'contact_list' ? ' is-current' : ''; ?>" href="index.php?page=contact_list" <?php echo $currentPage === 'contact_list' ? 'aria-current="page"' : ''; ?>>お問い合わせ一覧</a>
+    <a class="nav-card nav-card-blog" href="https://matsu-f.com/wp-login.php" target="_blank" rel="noopener noreferrer" style="background: url('assets/img/btn11.png') center / cover no-repeat;">ブログ追加</a>
   </nav>
 
   <main class="content">
@@ -76,3 +189,4 @@ $documentTitle = 'コントロールパネル ' . $pageTitle;
   </main>
 </body>
 </html>
+

@@ -253,6 +253,7 @@ if (!$showThanks && $_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     </style>
+    <title>お問い合わせ 松永不動産</title>
 </head>
 <body>
 <?php
