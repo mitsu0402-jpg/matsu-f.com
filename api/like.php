@@ -10,13 +10,38 @@ function json_response(array $data, int $status = 200): void
     exit;
 }
 
+function normalize_page_path(string $path): string
+{
+    $path = trim($path);
+    if ($path === '') {
+        return '';
+    }
+    $parts = parse_url($path);
+    $cleanPath = (string)($parts['path'] ?? $path);
+    $query = (string)($parts['query'] ?? '');
+    if ($query !== '') {
+        $cleanPath .= '?' . $query;
+    }
+    return $cleanPath;
+}
+
+function blog_content_id_from_path(string $pagePath): int
+{
+    $raw = sprintf('%u', crc32($pagePath));
+    $id = (int)(((int)$raw) % 2147483647);
+    return $id > 0 ? $id : 1;
+}
+
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $contentType = isset($_REQUEST['content_type']) ? trim((string)$_REQUEST['content_type']) : '';
 $contentId = isset($_REQUEST['content_id']) ? (int)$_REQUEST['content_id'] : 0;
-$pagePath = isset($_REQUEST['page_path']) ? trim((string)$_REQUEST['page_path']) : '';
+$pagePath = normalize_page_path((string)($_REQUEST['page_path'] ?? ''));
 
 if ($contentType === '' || $pagePath === '') {
     json_response(['ok' => false, 'error' => 'missing_params'], 400);
+}
+if ($contentType === 'blog' && $contentId <= 0) {
+    $contentId = blog_content_id_from_path($pagePath);
 }
 
 try {

@@ -6,6 +6,28 @@ function h(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
+function normalize_page_path(string $path): string
+{
+    $path = trim($path);
+    if ($path === '') {
+        return '';
+    }
+    $parts = parse_url($path);
+    $cleanPath = (string)($parts['path'] ?? $path);
+    $query = (string)($parts['query'] ?? '');
+    if ($query !== '') {
+        $cleanPath .= '?' . $query;
+    }
+    return $cleanPath;
+}
+
+function blog_content_id_from_path(string $pagePath): int
+{
+    $raw = sprintf('%u', crc32($pagePath));
+    $id = (int)(((int)$raw) % 2147483647);
+    return $id > 0 ? $id : 1;
+}
+
 $pagePath = trim((string)($_GET['page_path'] ?? ''));
 if ($pagePath === '') {
     $ref = trim((string)($_SERVER['HTTP_REFERER'] ?? ''));
@@ -21,6 +43,8 @@ if ($pagePath === '') {
 if ($pagePath === '') {
     $pagePath = '/';
 }
+$pagePath = normalize_page_path($pagePath);
+$contentId = blog_content_id_from_path($pagePath);
 ?>
 <!doctype html>
 <html lang="ja">
@@ -86,7 +110,7 @@ if ($pagePath === '') {
       var pagePath = <?php echo json_encode($pagePath, JSON_UNESCAPED_UNICODE); ?>;
       var payload = new URLSearchParams({
         content_type: 'blog',
-        content_id: '0',
+        content_id: <?php echo json_encode((string)$contentId, JSON_UNESCAPED_UNICODE); ?>,
         page_path: pagePath
       });
 

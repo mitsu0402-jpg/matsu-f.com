@@ -23,6 +23,7 @@ try {
          LIMIT 1) AS image_path
         FROM `sale_properties`
         WHERE `osusume` = 1
+          AND `status` = 1
         ORDER BY lastUpdateDate DESC, id DESC';
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
