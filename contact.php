@@ -2,10 +2,13 @@
 header('Content-Type: text/html; charset=UTF-8');
 
 require_once __DIR__ . '/control/lib/db.php';
+require_once __DIR__ . '/control/lib/contact_guard.php';
 
-if (isset($_GET['debug']) && $_GET['debug'] === '1') {
-    ini_set('display_errors', '1');
-    error_reporting(E_ALL);
+session_start(['cookie_httponly' => true, 'cookie_secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off', 'cookie_samesite' => 'Lax', 'use_strict_mode' => true]);
+header('Cache-Control: no-store');
+if (!isset($_SESSION['contact_token'])) {
+    $_SESSION['contact_token'] = bin2hex(random_bytes(32));
+    $_SESSION['contact_started'] = time();
 }
 
 function h(string $value): string
@@ -57,10 +60,29 @@ if (!$showThanks && $_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 if (!$showThanks && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $values['name'] = trim((string)($_POST['name'] ?? ''));
-    $values['contact'] = trim((string)($_POST['contact'] ?? ''));
-    $values['request'] = (string)($_POST['request'] ?? 'sell');
-    $values['note'] = trim((string)($_POST['note'] ?? ''));
+    foreach (['name', 'contact', 'request', 'note'] as $field) {
+        $values[$field] = isset($_POST[$field]) && is_string($_POST[$field]) ? trim($_POST[$field]) : '';
+    }
+    $token = $_POST['form_token'] ?? null;
+    if (!is_string($token) || !hash_equals($_SESSION['contact_token'], $token)
+        || !isset($_POST['website']) || !is_string($_POST['website']) || $_POST['website'] !== '') {
+        $errors[] = '送信を確認できませんでした。ページを開き直してください。';
+    }
+    if (!isset($_SESSION['contact_started']) || time() - $_SESSION['contact_started'] < 3) {
+        $errors[] = '送信が早すぎます。数秒待ってからもう一度送信してください。';
+    }
+    foreach (['name' => 100, 'contact' => 254, 'note' => 5000] as $field => $maximum) {
+        if (preg_match('//u', $values[$field]) !== 1
+            || (function_exists('mb_strlen') ? mb_strlen($values[$field], 'UTF-8') : strlen($values[$field])) > $maximum
+            || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $values[$field])) {
+            $errors[] = '入力内容の文字数・形式を確認してください。';
+        }
+    }
+    $phone = preg_replace('/[\s()\-]/', '', $values['contact']);
+    if ($values['contact'] !== '' && !filter_var($values['contact'], FILTER_VALIDATE_EMAIL)
+        && !preg_match('/^\+?[0-9]{10,15}$/', $phone)) {
+        $errors[] = '連絡先には電話番号またはメールアドレスを入力してください。';
+    }
 
     if ($values['name'] === '') {
         $errors[] = 'お名前を入力してください。';
@@ -70,6 +92,18 @@ if (!$showThanks && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (!in_array($values['request'], ['sell', 'rent', 'buy', 'borrow', 'consult'], true)) {
         $errors[] = 'ご要望を選択してください。';
+    }
+
+    if (!$errors) {
+        try {
+            $fingerprint = hash('sha256', json_encode($values, JSON_UNESCAPED_UNICODE));
+            if (!contact_reserve_submission((string)($_SERVER['REMOTE_ADDR'] ?? ''), $fingerprint)) {
+                $errors[] = '連続送信または同じ内容の送信を受け付けられません。10分ほど待ってからお試しください。';
+            }
+        } catch (Throwable $e) {
+            error_log('Contact rate limit storage unavailable');
+            $errors[] = '現在送信を受け付けられません。時間をおいてお試しください。';
+        }
     }
 
     if (!$errors) {
@@ -99,6 +133,8 @@ if (!$showThanks && $_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             send_text_mail('info@matsu-f.com', $mailSubject, $mailBody, ['mitsu0402@gmail.com']);
 
+            $_SESSION['contact_token'] = bin2hex(random_bytes(32));
+            $_SESSION['contact_started'] = time();
             header('Location: https://matsu-f.com/thanks/', true, 303);
             exit;
         } catch (Throwable $e) {
@@ -275,6 +311,11 @@ require __DIR__ . '/inc/siteHeader.php';
                     </p>
                 <?php endif; ?>
                 <form class="contact-form" method="post" action="">
+                    <input type="hidden" name="form_token" value="<?php echo h($_SESSION['contact_token']); ?>">
+                    <div hidden aria-hidden="true">
+                        <label for="contact-website">Website</label>
+                        <input id="contact-website" type="text" name="website" value="" tabindex="-1" autocomplete="off">
+                    </div>
                     <div class="contact-field">
                         <label class="contact-label" for="contact-name">お名前</label>
                         <input class="contact-input" id="contact-name" name="name" type="text" value="<?php echo h($values['name']); ?>">
