@@ -193,6 +193,7 @@ if (!$showThanks && $_SERVER['REQUEST_METHOD'] === 'POST') {
         .contact-field {
             display: grid;
             gap: 6px;
+            min-width: 0;
         }
 
         .contact-label {
@@ -202,7 +203,9 @@ if (!$showThanks && $_SERVER['REQUEST_METHOD'] === 'POST') {
         .contact-input,
         .contact-select,
         .contact-textarea {
+            box-sizing: border-box;
             width: 100%;
+            min-width: 0;
             padding: 10px 12px;
             border: 1px solid var(--border-color);
             border-radius: 8px;
